@@ -1,0 +1,43 @@
+<html>
+
+<body>
+    <button id="start">开始</button>
+    <button id="stop">结束</button>
+    <div class="panel-row params-webcam-row">
+        <div class="webcam-box-outer">
+            <div class="webcam-box-inner">
+                <video autoplay playsinline muted id="webcam" width="224" height="224"></video>
+            </div>
+        </div>
+    </div>
+    <p id="predict"></p>
+    <script src="./bundle.js"></script>
+</body>
+
+</html>
+
+<style>
+    .webcam-box-outer {
+        background: black;
+        border: 1px solid #585858;
+        border-radius: 4px;
+        box-sizing: border-box;
+        display: inline-block;
+        padding: 3px;
+    }
+
+    .webcam-box-inner {
+        border: 1px solid #585858;
+        border-radius: 4px;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        overflow: hidden;
+        width: 160px;
+    }
+
+    #webcam {
+        height: 160px;
+        transform: scaleX(-1);
+    }
+</style>
