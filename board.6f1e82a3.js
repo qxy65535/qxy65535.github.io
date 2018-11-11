@@ -326,8 +326,8 @@ var runloop = function runloop() {
 
 var init = function init() {
   level = 1;
-  ballSpeedX = 3;
-  ballSpeedY = 3;
+  ballSpeedX = 5;
+  ballSpeedY = 5;
   ballX = 150;
   ballY = 219;
   ballWidth = 30;
@@ -343,8 +343,8 @@ var init = function init() {
 };
 
 var nextLevel = function nextLevel() {
-  ballSpeedX += 2;
-  ballSpeedY += 2;
+  ballSpeedX = 5;
+  ballSpeedY = 5;
   ballX = 150;
   ballY = 219;
   ballWidth = 30;

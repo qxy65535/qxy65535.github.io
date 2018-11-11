@@ -277,7 +277,7 @@ header b {
 .dropdown .select::after {
     content: "arrow_drop_down";
     color: #999;
-    font-family: 'Material Icons';
+    /* font-family: 'Material Icons'; */
     font-weight: normal;
     font-style: normal;
     font-size: 18px;
