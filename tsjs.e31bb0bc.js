@@ -51173,338 +51173,603 @@ var version = "0.13.4",
   tfjs: version
 };
 exports.version = version$1;
-},{"@tensorflow/tfjs-core":"node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js","@tensorflow/tfjs-layers":"node_modules/@tensorflow/tfjs-layers/dist/tf-layers.esm.js","@tensorflow/tfjs-converter":"node_modules/@tensorflow/tfjs-converter/dist/tf-converter.esm.js"}],"node_modules/@tensorflow-models/posenet/dist/posenet.esm.js":[function(require,module,exports) {
+},{"@tensorflow/tfjs-core":"node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js","@tensorflow/tfjs-layers":"node_modules/@tensorflow/tfjs-layers/dist/tf-layers.esm.js","@tensorflow/tfjs-converter":"node_modules/@tensorflow/tfjs-converter/dist/tf-converter.esm.js"}],"posenet/checkpoint_loader.ts":[function(require,module,exports) {
 "use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.decodeMultiplePoses = decodeMultiplePoses;
-exports.decodeSinglePose = decodeSinglePose;
-exports.load = load;
-exports.getAdjacentKeyPoints = getAdjacentKeyPoints;
-exports.getBoundingBox = getBoundingBox;
-exports.getBoundingBoxPoints = getBoundingBoxPoints;
-exports.poseChain = exports.partNames = exports.partIds = exports.PoseNet = exports.CheckpointLoader = exports.mobileNetArchitectures = exports.MobileNet = void 0;
+exports.__esModule = true;
 
-var tf = _interopRequireWildcard(require("@tensorflow/tfjs"));
+var tfjs_1 = require("@tensorflow/tfjs");
 
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
+var MANIFEST_FILE = 'manifest.json';
 
-// @tensorflow/tfjs-models Copyright 2018 Google
-var MANIFEST_FILE = "manifest.json",
-    CheckpointLoader = function () {
-  function e(e) {
-    this.urlPath = e, "/" !== this.urlPath.charAt(this.urlPath.length - 1) && (this.urlPath += "/");
+var CheckpointLoader =
+/** @class */
+function () {
+  function CheckpointLoader(urlPath) {
+    this.urlPath = urlPath;
+
+    if (this.urlPath.charAt(this.urlPath.length - 1) !== '/') {
+      this.urlPath += '/';
+    }
   }
 
-  return e.prototype.loadManifest = function () {
-    var e = this;
-    return new Promise(function (t, r) {
-      var n = new XMLHttpRequest();
-      n.open("GET", e.urlPath + MANIFEST_FILE), n.onload = function () {
-        e.checkpointManifest = JSON.parse(n.responseText), t();
-      }, n.onerror = function (t) {
-        throw new Error(MANIFEST_FILE + " not found at " + e.urlPath + ". " + t);
-      }, n.send();
+  CheckpointLoader.prototype.loadManifest = function () {
+    var _this = this;
+
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', _this.urlPath + MANIFEST_FILE);
+
+      xhr.onload = function () {
+        _this.checkpointManifest = JSON.parse(xhr.responseText);
+        resolve();
+      };
+
+      xhr.onerror = function (error) {
+        throw new Error(MANIFEST_FILE + " not found at " + _this.urlPath + ". " + error);
+      };
+
+      xhr.send();
     });
-  }, e.prototype.getCheckpointManifest = function () {
-    var e = this;
-    return null == this.checkpointManifest ? new Promise(function (t, r) {
-      e.loadManifest().then(function () {
-        t(e.checkpointManifest);
+  };
+
+  CheckpointLoader.prototype.getCheckpointManifest = function () {
+    var _this = this;
+
+    if (this.checkpointManifest == null) {
+      return new Promise(function (resolve, reject) {
+        _this.loadManifest().then(function () {
+          resolve(_this.checkpointManifest);
+        });
       });
-    }) : new Promise(function (t, r) {
-      t(e.checkpointManifest);
+    }
+
+    return new Promise(function (resolve, reject) {
+      resolve(_this.checkpointManifest);
     });
-  }, e.prototype.getAllVariables = function () {
-    var e = this;
-    return null != this.variables ? new Promise(function (t, r) {
-      t(e.variables);
-    }) : new Promise(function (t, r) {
-      e.getCheckpointManifest().then(function (r) {
-        for (var n = Object.keys(e.checkpointManifest), o = [], i = 0; i < n.length; i++) o.push(e.getVariable(n[i]));
+  };
 
-        Promise.all(o).then(function (r) {
-          e.variables = {};
+  CheckpointLoader.prototype.getAllVariables = function () {
+    var _this = this;
 
-          for (var o = 0; o < r.length; o++) e.variables[n[o]] = r[o];
+    if (this.variables != null) {
+      return new Promise(function (resolve, reject) {
+        resolve(_this.variables);
+      });
+    }
 
-          t(e.variables);
+    return new Promise(function (resolve, reject) {
+      _this.getCheckpointManifest().then(function (checkpointDefinition) {
+        var variableNames = Object.keys(_this.checkpointManifest);
+        var variablePromises = [];
+
+        for (var i = 0; i < variableNames.length; i++) {
+          variablePromises.push(_this.getVariable(variableNames[i]));
+        }
+
+        Promise.all(variablePromises).then(function (variables) {
+          _this.variables = {};
+
+          for (var i = 0; i < variables.length; i++) {
+            _this.variables[variableNames[i]] = variables[i];
+          }
+
+          resolve(_this.variables);
         });
       });
     });
-  }, e.prototype.getVariable = function (e) {
-    var t = this;
-    if (!(e in this.checkpointManifest)) throw new Error("Cannot load non-existant variable " + e);
+  };
 
-    var r = function (r, n) {
-      var o = new XMLHttpRequest();
-      o.responseType = "arraybuffer";
-      var i = t.checkpointManifest[e].filename;
-      o.open("GET", t.urlPath + i), o.onload = function () {
-        if (404 === o.status) throw new Error("Not found variable " + e);
-        var n = new Float32Array(o.response),
-            i = tf.Tensor.make(t.checkpointManifest[e].shape, {
-          values: n
+  CheckpointLoader.prototype.getVariable = function (varName) {
+    var _this = this;
+
+    if (!(varName in this.checkpointManifest)) {
+      throw new Error('Cannot load non-existant variable ' + varName);
+    }
+
+    var variableRequestPromiseMethod = function variableRequestPromiseMethod(resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.responseType = 'arraybuffer';
+      var fname = _this.checkpointManifest[varName].filename;
+      xhr.open('GET', _this.urlPath + fname);
+
+      xhr.onload = function () {
+        if (xhr.status === 404) {
+          throw new Error("Not found variable " + varName);
+        }
+
+        var values = new Float32Array(xhr.response);
+        var tensor = tfjs_1.Tensor.make(_this.checkpointManifest[varName].shape, {
+          values: values
         });
-        r(i);
-      }, o.onerror = function (t) {
-        throw new Error("Could not fetch variable " + e + ": " + t);
-      }, o.send();
+        resolve(tensor);
+      };
+
+      xhr.onerror = function (error) {
+        throw new Error("Could not fetch variable " + varName + ": " + error);
+      };
+
+      xhr.send();
     };
 
-    return null == this.checkpointManifest ? new Promise(function (e, n) {
-      t.loadManifest().then(function () {
-        new Promise(r).then(e);
+    if (this.checkpointManifest == null) {
+      return new Promise(function (resolve, reject) {
+        _this.loadManifest().then(function () {
+          new Promise(variableRequestPromiseMethod).then(resolve);
+        });
       });
-    }) : new Promise(r);
-  }, e;
-}(),
-    mobileNet100Architecture = [["conv2d", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1]],
-    mobileNet75Architecture = [["conv2d", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1]],
-    mobileNet50Architecture = [["conv2d", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 2], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1], ["separableConv", 1]],
-    VALID_OUTPUT_STRIDES = [8, 16, 32];
+    }
+
+    return new Promise(variableRequestPromiseMethod);
+  };
+
+  return CheckpointLoader;
+}();
 
 exports.CheckpointLoader = CheckpointLoader;
+},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js"}],"posenet/mobilenet.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
 
-function assertValidOutputStride(e) {
-  tf.util.assert("number" == typeof e, "outputStride is not a number"), tf.util.assert(VALID_OUTPUT_STRIDES.indexOf(e) >= 0, "outputStride of " + e + " is invalid. It must be either 8, 16, or 32");
+var __importStar = this && this.__importStar || function (mod) {
+  if (mod && mod.__esModule) return mod;
+  var result = {};
+  if (mod != null) for (var k in mod) {
+    if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+  }
+  result["default"] = mod;
+  return result;
+};
+
+exports.__esModule = true;
+
+var tf = __importStar(require("@tensorflow/tfjs")); // clang-format off
+
+
+var mobileNet100Architecture = [['conv2d', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1]];
+var mobileNet75Architecture = [['conv2d', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1]];
+var mobileNet50Architecture = [['conv2d', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 2], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1], ['separableConv', 1]];
+var mobileNet25Architecture = mobileNet50Architecture; // clang-format on
+
+var VALID_OUTPUT_STRIDES = [8, 16, 32]; // tslint:disable-next-line:no-any
+
+function assertValidOutputStride(outputStride) {
+  tf.util.assert(typeof outputStride === 'number', 'outputStride is not a number');
+  tf.util.assert(VALID_OUTPUT_STRIDES.indexOf(outputStride) >= 0, "outputStride of " + outputStride + " is invalid. " + "It must be either 8, 16, or 32");
 }
 
-function assertValidScaleFactor(e) {
-  tf.util.assert("number" == typeof e, "imageScaleFactor is not a number"), tf.util.assert(e >= .2 && e <= 1, "imageScaleFactor must be between 0.2 and 1.0");
+exports.assertValidOutputStride = assertValidOutputStride; // tslint:disable-next-line:no-any
+
+function assertValidResolution(resolution, outputStride) {
+  tf.util.assert(typeof resolution === 'number', 'resolution is not a number');
+  tf.util.assert((resolution - 1) % outputStride === 0, "resolution of " + resolution + " is invalid for output stride " + (outputStride + "."));
 }
 
-var mobileNetArchitectures = {
+exports.assertValidResolution = assertValidResolution; // tslint:disable-next-line:no-any
+
+function assertValidScaleFactor(imageScaleFactor) {
+  tf.util.assert(typeof imageScaleFactor === 'number', 'imageScaleFactor is not a number');
+  tf.util.assert(imageScaleFactor >= 0.2 && imageScaleFactor <= 1.0, 'imageScaleFactor must be between 0.2 and 1.0');
+}
+
+exports.assertValidScaleFactor = assertValidScaleFactor;
+exports.mobileNetArchitectures = {
   100: mobileNet100Architecture,
   75: mobileNet75Architecture,
-  50: mobileNet50Architecture
+  50: mobileNet50Architecture,
+  25: mobileNet25Architecture
 };
-exports.mobileNetArchitectures = mobileNetArchitectures;
+/**
+ * Takes a mobilenet architectures' convolution definitions and converts them
+ * into definitions for convolutional layers that will generate outputs with the
+ * desired output stride. It does this by reducing the input stride in certain
+ * layers and applying atrous convolution in subsequent layers. Raises an error
+ * if the output stride is not possible with the architecture.
+ */
 
-function toOutputStridedLayers(e, t) {
-  var r = 1,
-      n = 1;
-  return e.map(function (e, o) {
-    var i,
-        a,
-        s = e[0],
-        u = e[1];
-    return r === t ? (i = 1, a = n, n *= u) : (i = u, a = 1, r *= u), {
-      blockId: o,
-      convType: s,
-      stride: i,
-      rate: a,
-      outputStride: r
+function toOutputStridedLayers(convolutionDefinition, outputStride) {
+  // The currentStride variable keeps track of the output stride of
+  // the activations, i.e., the running product of convolution
+  // strides up to the current network layer. This allows us to
+  // invoke atrous convolution whenever applying the next
+  // convolution would result in the activations having output
+  // stride larger than the target outputStride.
+  var currentStride = 1; // The atrous convolution rate parameter.
+
+  var rate = 1;
+  return convolutionDefinition.map(function (_a, blockId) {
+    var convType = _a[0],
+        stride = _a[1];
+    var layerStride, layerRate;
+
+    if (currentStride === outputStride) {
+      // If we have reached the target outputStride, then we need to
+      // employ atrous convolution with stride=1 and multiply the atrous
+      // rate by the current unit's stride for use in subsequent layers.
+      layerStride = 1;
+      layerRate = rate;
+      rate *= stride;
+    } else {
+      layerStride = stride;
+      layerRate = 1;
+      currentStride *= stride;
+    }
+
+    return {
+      blockId: blockId,
+      convType: convType,
+      stride: layerStride,
+      rate: layerRate,
+      outputStride: currentStride
     };
   });
 }
 
-var MobileNet = function () {
-  function e(e, t) {
-    this.PREPROCESS_DIVISOR = (0, tf.scalar)(127.5), this.ONE = (0, tf.scalar)(1), this.variables = e, this.convolutionDefinitions = t;
+var MobileNet =
+/** @class */
+function () {
+  function MobileNet(modelWeights, convolutionDefinitions) {
+    this.PREPROCESS_DIVISOR = tf.scalar(255.0 / 2);
+    this.ONE = tf.scalar(1.0);
+    this.modelWeights = modelWeights;
+    this.convolutionDefinitions = convolutionDefinitions;
   }
 
-  return e.prototype.predict = function (e, t) {
-    var r = this,
-        n = (0, tf.cast)(e, "float32").div(this.PREPROCESS_DIVISOR).sub(this.ONE);
-    return toOutputStridedLayers(this.convolutionDefinitions, t).reduce(function (e, t) {
-      var n = t.blockId,
-          o = t.stride,
-          i = t.convType,
-          a = t.rate;
-      if ("conv2d" === i) return r.conv(e, o, n);
-      if ("separableConv" === i) return r.separableConv(e, o, n, a);
-      throw Error("Unknown conv type of " + i);
-    }, n);
-  }, e.prototype.convToOutput = function (e, t) {
-    return e.conv2d(this.weights(t), 1, "same").add(this.biases(t));
-  }, e.prototype.conv = function (e, t, r) {
-    return e.conv2d(this.weights("Conv2d_" + String(r)), t, "same").add(this.biases("Conv2d_" + String(r))).clipByValue(0, 6);
-  }, e.prototype.separableConv = function (e, t, r, n) {
-    void 0 === n && (n = 1);
-    var o = "Conv2d_" + String(r) + "_depthwise",
-        i = "Conv2d_" + String(r) + "_pointwise";
-    return e.depthwiseConv2D(this.depthwiseWeights(o), t, "same", "NHWC", n).add(this.biases(o)).clipByValue(0, 6).conv2d(this.weights(i), [1, 1], "same").add(this.biases(i)).clipByValue(0, 6);
-  }, e.prototype.weights = function (e) {
-    return this.variables["MobilenetV1/" + e + "/weights"];
-  }, e.prototype.biases = function (e) {
-    return this.variables["MobilenetV1/" + e + "/biases"];
-  }, e.prototype.depthwiseWeights = function (e) {
-    return this.variables["MobilenetV1/" + e + "/depthwise_weights"];
-  }, e.prototype.dispose = function () {
-    for (var e in this.variables) this.variables[e].dispose();
-  }, e;
+  MobileNet.prototype.predict = function (input, outputStride) {
+    var _this = this; // Normalize the pixels [0, 255] to be between [-1, 1].
+
+
+    var normalized = tf.div(input.toFloat(), this.PREPROCESS_DIVISOR);
+    var preprocessedInput = tf.sub(normalized, this.ONE);
+    var layers = toOutputStridedLayers(this.convolutionDefinitions, outputStride);
+    return layers.reduce(function (previousLayer, _a) {
+      var blockId = _a.blockId,
+          stride = _a.stride,
+          convType = _a.convType,
+          rate = _a.rate;
+
+      if (convType === 'conv2d') {
+        return _this.conv(previousLayer, stride, blockId);
+      } else if (convType === 'separableConv') {
+        return _this.separableConv(previousLayer, stride, blockId, rate);
+      } else {
+        throw Error("Unknown conv type of " + convType);
+      }
+    }, preprocessedInput);
+  };
+
+  MobileNet.prototype.convToOutput = function (mobileNetOutput, outputLayerName) {
+    return mobileNetOutput.conv2d(this.weights(outputLayerName), 1, 'same').add(this.convBias(outputLayerName));
+  };
+
+  MobileNet.prototype.conv = function (inputs, stride, blockId) {
+    var weights = this.weights("Conv2d_" + String(blockId));
+    var a = inputs.conv2d(weights, stride, 'same');
+    var b = a.add(this.convBias("Conv2d_" + String(blockId))); // relu6
+
+    return b.clipByValue(0, 6);
+  };
+
+  MobileNet.prototype.separableConv = function (inputs, stride, blockID, dilations) {
+    if (dilations === void 0) {
+      dilations = 1;
+    }
+
+    var dwLayer = "Conv2d_" + String(blockID) + "_depthwise";
+    var pwLayer = "Conv2d_" + String(blockID) + "_pointwise";
+    var x1 = inputs.depthwiseConv2D(this.depthwiseWeights(dwLayer), stride, 'same', 'NHWC', dilations).add(this.depthwiseBias(dwLayer)) // relu6
+    .clipByValue(0, 6);
+    var x2 = x1.conv2d(this.weights(pwLayer), [1, 1], 'same').add(this.convBias(pwLayer)) // relu6
+    .clipByValue(0, 6);
+    return x2;
+  };
+
+  MobileNet.prototype.weights = function (layerName) {
+    return this.modelWeights.weights(layerName);
+  };
+
+  MobileNet.prototype.convBias = function (layerName) {
+    return this.modelWeights.convBias(layerName);
+  };
+
+  MobileNet.prototype.depthwiseBias = function (layerName) {
+    return this.modelWeights.depthwiseBias(layerName);
+  };
+
+  MobileNet.prototype.depthwiseWeights = function (layerName) {
+    return this.modelWeights.depthwiseWeights(layerName);
+  };
+
+  MobileNet.prototype.dispose = function () {
+    this.modelWeights.dispose();
+  };
+
+  return MobileNet;
 }();
 
 exports.MobileNet = MobileNet;
+},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js"}],"posenet/keypoints.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
 
-function __awaiter(e, t, r, n) {
-  return new (r || (r = Promise))(function (o, i) {
-    function a(e) {
+exports.__esModule = true;
+exports.partNames = ['nose', 'leftEye', 'rightEye', 'leftEar', 'rightEar', 'leftShoulder', 'rightShoulder', 'leftElbow', 'rightElbow', 'leftWrist', 'rightWrist', 'leftHip', 'rightHip', 'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle'];
+exports.NUM_KEYPOINTS = exports.partNames.length;
+exports.partIds = exports.partNames.reduce(function (result, jointName, i) {
+  result[jointName] = i;
+  return result;
+}, {});
+var connectedPartNames = [['leftHip', 'leftShoulder'], ['leftElbow', 'leftShoulder'], ['leftElbow', 'leftWrist'], ['leftHip', 'leftKnee'], ['leftKnee', 'leftAnkle'], ['rightHip', 'rightShoulder'], ['rightElbow', 'rightShoulder'], ['rightElbow', 'rightWrist'], ['rightHip', 'rightKnee'], ['rightKnee', 'rightAnkle'], ['leftShoulder', 'rightShoulder'], ['leftHip', 'rightHip']];
+/*
+ * Define the skeleton. This defines the parent->child relationships of our
+ * tree. Arbitrarily this defines the nose as the root of the tree, however
+ * since we will infer the displacement for both parent->child and
+ * child->parent, we can define the tree root as any node.
+ */
+
+exports.poseChain = [['nose', 'leftEye'], ['leftEye', 'leftEar'], ['nose', 'rightEye'], ['rightEye', 'rightEar'], ['nose', 'leftShoulder'], ['leftShoulder', 'leftElbow'], ['leftElbow', 'leftWrist'], ['leftShoulder', 'leftHip'], ['leftHip', 'leftKnee'], ['leftKnee', 'leftAnkle'], ['nose', 'rightShoulder'], ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'], ['rightShoulder', 'rightHip'], ['rightHip', 'rightKnee'], ['rightKnee', 'rightAnkle']];
+exports.connectedPartIndices = connectedPartNames.map(function (_a) {
+  var jointNameA = _a[0],
+      jointNameB = _a[1];
+  return [exports.partIds[jointNameA], exports.partIds[jointNameB]];
+});
+exports.partChannels = ['left_face', 'right_face', 'right_upper_leg_front', 'right_lower_leg_back', 'right_upper_leg_back', 'left_lower_leg_front', 'left_upper_leg_front', 'left_upper_leg_back', 'left_lower_leg_back', 'right_feet', 'right_lower_leg_front', 'left_feet', 'torso_front', 'torso_back', 'right_upper_arm_front', 'right_upper_arm_back', 'right_lower_arm_back', 'left_lower_arm_front', 'left_upper_arm_front', 'left_upper_arm_back', 'left_lower_arm_back', 'right_hand', 'right_lower_arm_front', 'left_hand'];
+},{}],"posenet/util.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
       try {
-        u(n.next(e));
+        step(generator.next(value));
       } catch (e) {
-        i(e);
+        reject(e);
       }
     }
 
-    function s(e) {
+    function rejected(value) {
       try {
-        u(n.throw(e));
+        step(generator["throw"](value));
       } catch (e) {
-        i(e);
+        reject(e);
       }
     }
 
-    function u(e) {
-      e.done ? o(e.value) : new r(function (t) {
-        t(e.value);
-      }).then(a, s);
+    function step(result) {
+      result.done ? resolve(result.value) : new P(function (resolve) {
+        resolve(result.value);
+      }).then(fulfilled, rejected);
     }
 
-    u((n = n.apply(e, t || [])).next());
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
-}
+};
 
-function __generator(e, t) {
-  var r,
-      n,
-      o,
-      i,
-      a = {
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
     label: 0,
-    sent: function () {
-      if (1 & o[0]) throw o[1];
-      return o[1];
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
     },
     trys: [],
     ops: []
-  };
-  return i = {
-    next: s(0),
-    throw: s(1),
-    return: s(2)
-  }, "function" == typeof Symbol && (i[Symbol.iterator] = function () {
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
     return this;
-  }), i;
+  }), g;
 
-  function s(i) {
-    return function (s) {
-      return function (i) {
-        if (r) throw new TypeError("Generator is already executing.");
-
-        for (; a;) try {
-          if (r = 1, n && (o = 2 & i[0] ? n.return : i[0] ? n.throw || ((o = n.return) && o.call(n), 0) : n.next) && !(o = o.call(n, i[1])).done) return o;
-
-          switch (n = 0, o && (i = [2 & i[0], o.value]), i[0]) {
-            case 0:
-            case 1:
-              o = i;
-              break;
-
-            case 4:
-              return a.label++, {
-                value: i[1],
-                done: !1
-              };
-
-            case 5:
-              a.label++, n = i[1], i = [0];
-              continue;
-
-            case 7:
-              i = a.ops.pop(), a.trys.pop();
-              continue;
-
-            default:
-              if (!(o = (o = a.trys).length > 0 && o[o.length - 1]) && (6 === i[0] || 2 === i[0])) {
-                a = 0;
-                continue;
-              }
-
-              if (3 === i[0] && (!o || i[1] > o[0] && i[1] < o[3])) {
-                a.label = i[1];
-                break;
-              }
-
-              if (6 === i[0] && a.label < o[1]) {
-                a.label = o[1], o = i;
-                break;
-              }
-
-              if (o && a.label < o[2]) {
-                a.label = o[2], a.ops.push(i);
-                break;
-              }
-
-              o[2] && a.ops.pop(), a.trys.pop();
-              continue;
-          }
-
-          i = t.call(e, a);
-        } catch (e) {
-          i = [6, e], n = 0;
-        } finally {
-          r = o = 0;
-        }
-
-        if (5 & i[0]) throw i[1];
-        return {
-          value: i[0] ? i[1] : void 0,
-          done: !0
-        };
-      }([i, s]);
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
     };
   }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
+var __importStar = this && this.__importStar || function (mod) {
+  if (mod && mod.__esModule) return mod;
+  var result = {};
+  if (mod != null) for (var k in mod) {
+    if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+  }
+  result["default"] = mod;
+  return result;
+};
+
+exports.__esModule = true;
+
+var tf = __importStar(require("@tensorflow/tfjs"));
+
+var keypoints_1 = require("./keypoints");
+
+function eitherPointDoesntMeetConfidence(a, b, minConfidence) {
+  return a < minConfidence || b < minConfidence;
 }
 
-var partNames = ["nose", "leftEye", "rightEye", "leftEar", "rightEar", "leftShoulder", "rightShoulder", "leftElbow", "rightElbow", "leftWrist", "rightWrist", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle"],
-    NUM_KEYPOINTS = partNames.length,
-    partIds = partNames.reduce(function (e, t, r) {
-  return e[t] = r, e;
-}, {}),
-    connectedPartNames = [["leftHip", "leftShoulder"], ["leftElbow", "leftShoulder"], ["leftElbow", "leftWrist"], ["leftHip", "leftKnee"], ["leftKnee", "leftAnkle"], ["rightHip", "rightShoulder"], ["rightElbow", "rightShoulder"], ["rightElbow", "rightWrist"], ["rightHip", "rightKnee"], ["rightKnee", "rightAnkle"], ["leftShoulder", "rightShoulder"], ["leftHip", "rightHip"]],
-    poseChain = [["nose", "leftEye"], ["leftEye", "leftEar"], ["nose", "rightEye"], ["rightEye", "rightEar"], ["nose", "leftShoulder"], ["leftShoulder", "leftElbow"], ["leftElbow", "leftWrist"], ["leftShoulder", "leftHip"], ["leftHip", "leftKnee"], ["leftKnee", "leftAnkle"], ["nose", "rightShoulder"], ["rightShoulder", "rightElbow"], ["rightElbow", "rightWrist"], ["rightShoulder", "rightHip"], ["rightHip", "rightKnee"], ["rightKnee", "rightAnkle"]],
-    connectedPartIndices = connectedPartNames.map(function (e) {
-  var t = e[0],
-      r = e[1];
-  return [partIds[t], partIds[r]];
-});
-exports.poseChain = poseChain;
-exports.partIds = partIds;
-exports.partNames = partNames;
+function getAdjacentKeyPoints(keypoints, minConfidence) {
+  return keypoints_1.connectedPartIndices.reduce(function (result, _a) {
+    var leftJoint = _a[0],
+        rightJoint = _a[1];
 
-function eitherPointDoesntMeetConfidence(e, t, r) {
-  return e < r || t < r;
-}
+    if (eitherPointDoesntMeetConfidence(keypoints[leftJoint].score, keypoints[rightJoint].score, minConfidence)) {
+      return result;
+    }
 
-function getAdjacentKeyPoints(e, t) {
-  return connectedPartIndices.reduce(function (r, n) {
-    var o = n[0],
-        i = n[1];
-    return eitherPointDoesntMeetConfidence(e[o].score, e[i].score, t) ? r : (r.push([e[o], e[i]]), r);
+    result.push([keypoints[leftJoint], keypoints[rightJoint]]);
+    return result;
   }, []);
 }
 
+exports.getAdjacentKeyPoints = getAdjacentKeyPoints;
 var NEGATIVE_INFINITY = Number.NEGATIVE_INFINITY,
     POSITIVE_INFINITY = Number.POSITIVE_INFINITY;
 
-function getBoundingBox(e) {
-  return e.reduce(function (e, t) {
-    var r = e.maxX,
-        n = e.maxY,
-        o = e.minX,
-        i = e.minY,
-        a = t.position,
-        s = a.x,
-        u = a.y;
+function getBoundingBox(keypoints) {
+  return keypoints.reduce(function (_a, _b) {
+    var maxX = _a.maxX,
+        maxY = _a.maxY,
+        minX = _a.minX,
+        minY = _a.minY;
+    var _c = _b.position,
+        x = _c.x,
+        y = _c.y;
     return {
-      maxX: Math.max(r, s),
-      maxY: Math.max(n, u),
-      minX: Math.min(o, s),
-      minY: Math.min(i, u)
+      maxX: Math.max(maxX, x),
+      maxY: Math.max(maxY, y),
+      minX: Math.min(minX, x),
+      minY: Math.min(minY, y)
     };
   }, {
     maxX: NEGATIVE_INFINITY,
@@ -51514,536 +51779,2001 @@ function getBoundingBox(e) {
   });
 }
 
-function getBoundingBoxPoints(e) {
-  var t = getBoundingBox(e),
-      r = t.minX,
-      n = t.minY,
-      o = t.maxX,
-      i = t.maxY;
+exports.getBoundingBox = getBoundingBox;
+
+function getBoundingBoxPoints(keypoints) {
+  var _a = getBoundingBox(keypoints),
+      minX = _a.minX,
+      minY = _a.minY,
+      maxX = _a.maxX,
+      maxY = _a.maxY;
+
   return [{
-    x: r,
-    y: n
+    x: minX,
+    y: minY
   }, {
-    x: o,
-    y: n
+    x: maxX,
+    y: minY
   }, {
-    x: o,
-    y: i
+    x: maxX,
+    y: maxY
   }, {
-    x: r,
-    y: i
+    x: minX,
+    y: maxY
   }];
 }
 
-function toTensorBuffer(e, t) {
-  return void 0 === t && (t = "float32"), __awaiter(this, void 0, void 0, function () {
-    var r;
-    return __generator(this, function (n) {
-      switch (n.label) {
+exports.getBoundingBoxPoints = getBoundingBoxPoints;
+
+function toTensorBuffer(tensor, type) {
+  if (type === void 0) {
+    type = 'float32';
+  }
+
+  return __awaiter(this, void 0, Promise, function () {
+    var tensorData;
+    return __generator(this, function (_a) {
+      switch (_a.label) {
         case 0:
-          return [4, e.data()];
+          return [4
+          /*yield*/
+          , tensor.data()];
 
         case 1:
-          return r = n.sent(), [2, new tf.TensorBuffer(e.shape, t, r)];
+          tensorData = _a.sent();
+          return [2
+          /*return*/
+          , new tf.TensorBuffer(tensor.shape, type, tensorData)];
       }
     });
   });
 }
 
-function toTensorBuffers3D(e) {
-  return __awaiter(this, void 0, void 0, function () {
-    return __generator(this, function (t) {
-      return [2, Promise.all(e.map(function (e) {
-        return toTensorBuffer(e, "float32");
+exports.toTensorBuffer = toTensorBuffer;
+
+function toTensorBuffers3D(tensors) {
+  return __awaiter(this, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+      return [2
+      /*return*/
+      , Promise.all(tensors.map(function (tensor) {
+        return toTensorBuffer(tensor, 'float32');
       }))];
     });
   });
 }
 
-function scalePose(e, t, r) {
+exports.toTensorBuffers3D = toTensorBuffers3D;
+
+function scalePose(pose, scaleY, scaleX) {
   return {
-    score: e.score,
-    keypoints: e.keypoints.map(function (e) {
-      var n = e.score,
-          o = e.part,
-          i = e.position;
+    score: pose.score,
+    keypoints: pose.keypoints.map(function (_a) {
+      var score = _a.score,
+          part = _a.part,
+          position = _a.position;
       return {
-        score: n,
-        part: o,
+        score: score,
+        part: part,
         position: {
-          x: i.x * t,
-          y: i.y * r
+          x: position.x * scaleX,
+          y: position.y * scaleY
         }
       };
     })
   };
 }
 
-function scalePoses(e, t, r) {
-  return 1 === r && 1 === t ? e : e.map(function (e) {
-    return scalePose(e, r, t);
+exports.scalePose = scalePose;
+
+function scalePoses(poses, scaleY, scaleX) {
+  if (scaleX === 1 && scaleY === 1) {
+    return poses;
+  }
+
+  return poses.map(function (pose) {
+    return scalePose(pose, scaleY, scaleX);
   });
 }
 
-function getValidResolution(e, t, r) {
-  var n = t * e - 1;
-  return n - n % r + 1;
+exports.scalePoses = scalePoses;
+
+function getValidResolution(imageScaleFactor, inputDimension, outputStride) {
+  var evenResolution = inputDimension * imageScaleFactor - 1;
+  return evenResolution - evenResolution % outputStride + 1;
 }
 
-function half(e) {
-  return Math.floor(e / 2);
+exports.getValidResolution = getValidResolution;
+
+function getInputTensorDimensions(input) {
+  return input instanceof tf.Tensor ? [input.shape[0], input.shape[1]] : [input.height, input.width];
 }
 
-var MaxHeap = function () {
-  function e(e, t) {
-    this.priorityQueue = new Array(e), this.numberOfElements = -1, this.getElementValue = t;
+exports.getInputTensorDimensions = getInputTensorDimensions;
+
+function toInputTensor(input) {
+  return input instanceof tf.Tensor ? input : tf.fromPixels(input);
+}
+
+exports.toInputTensor = toInputTensor;
+
+function toResizedInputTensor(input, resizeHeight, resizeWidth, flipHorizontal) {
+  return tf.tidy(function () {
+    var imageTensor = toInputTensor(input);
+
+    if (flipHorizontal) {
+      return imageTensor.reverse(1).resizeBilinear([resizeHeight, resizeWidth]);
+    } else {
+      return imageTensor.resizeBilinear([resizeHeight, resizeWidth]);
+    }
+  });
+}
+
+exports.toResizedInputTensor = toResizedInputTensor;
+},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","./keypoints":"posenet/keypoints.ts"}],"posenet/multi_pose/max_heap.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true; // algorithm based on Coursera Lecture from Algorithms, Part 1:
+// https://www.coursera.org/learn/algorithms-part1/lecture/ZjoSM/heapsort
+
+function half(k) {
+  return Math.floor(k / 2);
+}
+
+var MaxHeap =
+/** @class */
+function () {
+  function MaxHeap(maxSize, getElementValue) {
+    this.priorityQueue = new Array(maxSize);
+    this.numberOfElements = -1;
+    this.getElementValue = getElementValue;
   }
 
-  return e.prototype.enqueue = function (e) {
-    this.priorityQueue[++this.numberOfElements] = e, this.swim(this.numberOfElements);
-  }, e.prototype.dequeue = function () {
-    var e = this.priorityQueue[0];
-    return this.exchange(0, this.numberOfElements--), this.sink(0), this.priorityQueue[this.numberOfElements + 1] = null, e;
-  }, e.prototype.empty = function () {
-    return -1 === this.numberOfElements;
-  }, e.prototype.size = function () {
+  MaxHeap.prototype.enqueue = function (x) {
+    this.priorityQueue[++this.numberOfElements] = x;
+    this.swim(this.numberOfElements);
+  };
+
+  MaxHeap.prototype.dequeue = function () {
+    var max = this.priorityQueue[0];
+    this.exchange(0, this.numberOfElements--);
+    this.sink(0);
+    this.priorityQueue[this.numberOfElements + 1] = null;
+    return max;
+  };
+
+  MaxHeap.prototype.empty = function () {
+    return this.numberOfElements === -1;
+  };
+
+  MaxHeap.prototype.size = function () {
     return this.numberOfElements + 1;
-  }, e.prototype.all = function () {
+  };
+
+  MaxHeap.prototype.all = function () {
     return this.priorityQueue.slice(0, this.numberOfElements + 1);
-  }, e.prototype.max = function () {
+  };
+
+  MaxHeap.prototype.max = function () {
     return this.priorityQueue[0];
-  }, e.prototype.swim = function (e) {
-    for (; e > 0 && this.less(half(e), e);) this.exchange(e, half(e)), e = half(e);
-  }, e.prototype.sink = function (e) {
-    for (; 2 * e <= this.numberOfElements;) {
-      var t = 2 * e;
-      if (t < this.numberOfElements && this.less(t, t + 1) && t++, !this.less(e, t)) break;
-      this.exchange(e, t), e = t;
+  };
+
+  MaxHeap.prototype.swim = function (k) {
+    while (k > 0 && this.less(half(k), k)) {
+      this.exchange(k, half(k));
+      k = half(k);
     }
-  }, e.prototype.getValueAt = function (e) {
-    return this.getElementValue(this.priorityQueue[e]);
-  }, e.prototype.less = function (e, t) {
-    return this.getValueAt(e) < this.getValueAt(t);
-  }, e.prototype.exchange = function (e, t) {
-    var r = this.priorityQueue[e];
-    this.priorityQueue[e] = this.priorityQueue[t], this.priorityQueue[t] = r;
-  }, e;
+  };
+
+  MaxHeap.prototype.sink = function (k) {
+    while (2 * k <= this.numberOfElements) {
+      var j = 2 * k;
+
+      if (j < this.numberOfElements && this.less(j, j + 1)) {
+        j++;
+      }
+
+      if (!this.less(k, j)) {
+        break;
+      }
+
+      this.exchange(k, j);
+      k = j;
+    }
+  };
+
+  MaxHeap.prototype.getValueAt = function (i) {
+    return this.getElementValue(this.priorityQueue[i]);
+  };
+
+  MaxHeap.prototype.less = function (i, j) {
+    return this.getValueAt(i) < this.getValueAt(j);
+  };
+
+  MaxHeap.prototype.exchange = function (i, j) {
+    var t = this.priorityQueue[i];
+    this.priorityQueue[i] = this.priorityQueue[j];
+    this.priorityQueue[j] = t;
+  };
+
+  return MaxHeap;
 }();
 
-function scoreIsMaximumInLocalWindow(e, t, r, n, o, i) {
-  for (var a = i.shape, s = a[0], u = a[1], l = !0, c = Math.max(r - o, 0), p = Math.min(r + o + 1, s), f = c; f < p; ++f) {
-    for (var h = Math.max(n - o, 0), d = Math.min(n + o + 1, u), v = h; v < d; ++v) if (i.get(f, v, e) > t) {
-      l = !1;
-      break;
+exports.MaxHeap = MaxHeap;
+},{}],"posenet/multi_pose/build_part_with_score_queue.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+
+var max_heap_1 = require("./max_heap");
+
+function scoreIsMaximumInLocalWindow(keypointId, score, heatmapY, heatmapX, localMaximumRadius, scores) {
+  var _a = scores.shape,
+      height = _a[0],
+      width = _a[1];
+  var localMaximum = true;
+  var yStart = Math.max(heatmapY - localMaximumRadius, 0);
+  var yEnd = Math.min(heatmapY + localMaximumRadius + 1, height);
+
+  for (var yCurrent = yStart; yCurrent < yEnd; ++yCurrent) {
+    var xStart = Math.max(heatmapX - localMaximumRadius, 0);
+    var xEnd = Math.min(heatmapX + localMaximumRadius + 1, width);
+
+    for (var xCurrent = xStart; xCurrent < xEnd; ++xCurrent) {
+      if (scores.get(yCurrent, xCurrent, keypointId) > score) {
+        localMaximum = false;
+        break;
+      }
     }
 
-    if (!l) break;
+    if (!localMaximum) {
+      break;
+    }
   }
 
-  return l;
+  return localMaximum;
 }
+/**
+ * Builds a priority queue with part candidate positions for a specific image in
+ * the batch. For this we find all local maxima in the score maps with score
+ * values above a threshold. We create a single priority queue across all parts.
+ */
 
-function buildPartWithScoreQueue(e, t, r) {
-  for (var n = r.shape, o = n[0], i = n[1], a = n[2], s = new MaxHeap(o * i * a, function (e) {
-    return e.score;
-  }), u = 0; u < o; ++u) for (var l = 0; l < i; ++l) for (var c = 0; c < a; ++c) {
-    var p = r.get(u, l, c);
-    p < e || scoreIsMaximumInLocalWindow(c, p, u, l, t, r) && s.enqueue({
-      score: p,
-      part: {
-        heatmapY: u,
-        heatmapX: l,
-        id: c
+
+function buildPartWithScoreQueue(scoreThreshold, localMaximumRadius, scores) {
+  var _a = scores.shape,
+      height = _a[0],
+      width = _a[1],
+      numKeypoints = _a[2];
+  var queue = new max_heap_1.MaxHeap(height * width * numKeypoints, function (_a) {
+    var score = _a.score;
+    return score;
+  });
+
+  for (var heatmapY = 0; heatmapY < height; ++heatmapY) {
+    for (var heatmapX = 0; heatmapX < width; ++heatmapX) {
+      for (var keypointId = 0; keypointId < numKeypoints; ++keypointId) {
+        var score = scores.get(heatmapY, heatmapX, keypointId); // Only consider parts with score greater or equal to threshold as
+        // root candidates.
+
+        if (score < scoreThreshold) {
+          continue;
+        } // Only consider keypoints whose score is maximum in a local window.
+
+
+        if (scoreIsMaximumInLocalWindow(keypointId, score, heatmapY, heatmapX, localMaximumRadius, scores)) {
+          queue.enqueue({
+            score: score,
+            part: {
+              heatmapY: heatmapY,
+              heatmapX: heatmapX,
+              id: keypointId
+            }
+          });
+        }
       }
-    });
+    }
   }
 
-  return s;
+  return queue;
 }
 
-function getOffsetPoint(e, t, r, n) {
+exports.buildPartWithScoreQueue = buildPartWithScoreQueue;
+},{"./max_heap":"posenet/multi_pose/max_heap.ts"}],"posenet/multi_pose/util.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+
+var keypoints_1 = require("../keypoints");
+
+function getOffsetPoint(y, x, keypoint, offsets) {
   return {
-    y: n.get(e, t, r),
-    x: n.get(e, t, r + NUM_KEYPOINTS)
+    y: offsets.get(y, x, keypoint),
+    x: offsets.get(y, x, keypoint + keypoints_1.NUM_KEYPOINTS)
   };
 }
 
-function getImageCoords(e, t, r) {
-  var n = getOffsetPoint(e.heatmapY, e.heatmapX, e.id, r),
-      o = n.y,
-      i = n.x;
+exports.getOffsetPoint = getOffsetPoint;
+
+function getImageCoords(part, outputStride, offsets) {
+  var heatmapY = part.heatmapY,
+      heatmapX = part.heatmapX,
+      keypoint = part.id;
+
+  var _a = getOffsetPoint(heatmapY, heatmapX, keypoint, offsets),
+      y = _a.y,
+      x = _a.x;
+
   return {
-    x: e.heatmapX * t + i,
-    y: e.heatmapY * t + o
+    x: part.heatmapX * outputStride + x,
+    y: part.heatmapY * outputStride + y
   };
 }
 
-function clamp(e, t, r) {
-  return e < t ? t : e > r ? r : e;
+exports.getImageCoords = getImageCoords;
+
+function fillArray(element, size) {
+  var result = new Array(size);
+
+  for (var i = 0; i < size; i++) {
+    result[i] = element;
+  }
+
+  return result;
 }
 
-function squaredDistance(e, t, r, n) {
-  var o = r - e,
-      i = n - t;
-  return o * o + i * i;
+exports.fillArray = fillArray;
+
+function clamp(a, min, max) {
+  if (a < min) {
+    return min;
+  }
+
+  if (a > max) {
+    return max;
+  }
+
+  return a;
 }
 
-function addVectors(e, t) {
+exports.clamp = clamp;
+
+function squaredDistance(y1, x1, y2, x2) {
+  var dy = y2 - y1;
+  var dx = x2 - x1;
+  return dy * dy + dx * dx;
+}
+
+exports.squaredDistance = squaredDistance;
+
+function addVectors(a, b) {
   return {
-    x: e.x + t.x,
-    y: e.y + t.y
+    x: a.x + b.x,
+    y: a.y + b.y
   };
 }
 
-var parentChildrenTuples = poseChain.map(function (e) {
-  var t = e[0],
-      r = e[1];
-  return [partIds[t], partIds[r]];
-}),
-    parentToChildEdges = parentChildrenTuples.map(function (e) {
-  return e[1];
-}),
-    childToParentEdges = parentChildrenTuples.map(function (e) {
-  return e[0];
+exports.addVectors = addVectors;
+
+function clampVector(a, min, max) {
+  return {
+    y: clamp(a.y, min, max),
+    x: clamp(a.x, min, max)
+  };
+}
+
+exports.clampVector = clampVector;
+},{"../keypoints":"posenet/keypoints.ts"}],"posenet/multi_pose/decode_pose.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+
+var keypoints_1 = require("../keypoints");
+
+var util_1 = require("./util");
+
+var util_2 = require("./util");
+
+var parentChildrenTuples = keypoints_1.poseChain.map(function (_a) {
+  var parentJoinName = _a[0],
+      childJoinName = _a[1];
+  return [keypoints_1.partIds[parentJoinName], keypoints_1.partIds[childJoinName]];
+});
+var parentToChildEdges = parentChildrenTuples.map(function (_a) {
+  var childJointId = _a[1];
+  return childJointId;
+});
+var childToParentEdges = parentChildrenTuples.map(function (_a) {
+  var parentJointId = _a[0];
+  return parentJointId;
 });
 
-function getDisplacement(e, t, r) {
-  var n = r.shape[2] / 2;
+function getDisplacement(edgeId, point, displacements) {
+  var numEdges = displacements.shape[2] / 2;
   return {
-    y: r.get(t.y, t.x, e),
-    x: r.get(t.y, t.x, n + e)
+    y: displacements.get(point.y, point.x, edgeId),
+    x: displacements.get(point.y, point.x, numEdges + edgeId)
   };
 }
 
-function getStridedIndexNearPoint(e, t, r, n) {
+function getStridedIndexNearPoint(point, outputStride, height, width) {
   return {
-    y: clamp(Math.round(e.y / t), 0, r - 1),
-    x: clamp(Math.round(e.x / t), 0, n - 1)
+    y: util_1.clamp(Math.round(point.y / outputStride), 0, height - 1),
+    x: util_1.clamp(Math.round(point.x / outputStride), 0, width - 1)
   };
 }
+/**
+ * We get a new keypoint along the `edgeId` for the pose instance, assuming
+ * that the position of the `idSource` part is already known. For this, we
+ * follow the displacement vector from the source to target part (stored in
+ * the `i`-t channel of the displacement tensor).
+ */
 
-function traverseToTargetKeypoint(e, t, r, n, o, i, a) {
-  var s = n.shape,
-      u = s[0],
-      l = s[1],
-      c = getDisplacement(e, getStridedIndexNearPoint(t.position, i, u, l), a),
-      p = getStridedIndexNearPoint(addVectors(t.position, c), i, u, l),
-      f = getOffsetPoint(p.y, p.x, r, o),
-      h = n.get(p.y, p.x, r);
-  return {
-    position: addVectors({
-      x: p.x * i,
-      y: p.y * i
-    }, {
-      x: f.x,
-      y: f.y
-    }),
-    part: partNames[r],
-    score: h
-  };
-}
 
-function decodePose(e, t, r, n, o, i) {
-  var a = t.shape[2],
-      s = parentToChildEdges.length,
-      u = new Array(a),
-      l = e.part,
-      c = e.score,
-      p = getImageCoords(l, n, r);
-  u[l.id] = {
-    score: c,
-    part: partNames[l.id],
-    position: p
-  };
+function traverseToTargetKeypoint(edgeId, sourceKeypoint, targetKeypointId, scoresBuffer, offsets, outputStride, displacements) {
+  var _a = scoresBuffer.shape,
+      height = _a[0],
+      width = _a[1]; // Nearest neighbor interpolation for the source->target displacements.
 
-  for (var f = s - 1; f >= 0; --f) {
-    var h = parentToChildEdges[f],
-        d = childToParentEdges[f];
-    u[h] && !u[d] && (u[d] = traverseToTargetKeypoint(f, u[h], d, t, r, n, i));
-  }
-
-  for (f = 0; f < s; ++f) {
-    h = childToParentEdges[f], d = parentToChildEdges[f];
-    u[h] && !u[d] && (u[d] = traverseToTargetKeypoint(f, u[h], d, t, r, n, o));
-  }
-
-  return u;
-}
-
-function withinNmsRadiusOfCorrespondingPoint(e, t, r, n) {
-  var o = r.x,
-      i = r.y;
-  return e.some(function (e) {
-    var r = e.keypoints[n].position;
-    return squaredDistance(i, o, r.y, r.x) <= t;
+  var sourceKeypointIndices = getStridedIndexNearPoint(sourceKeypoint.position, outputStride, height, width);
+  var displacement = getDisplacement(edgeId, sourceKeypointIndices, displacements);
+  var displacedPoint = util_2.addVectors(sourceKeypoint.position, displacement);
+  var displacedPointIndices = getStridedIndexNearPoint(displacedPoint, outputStride, height, width);
+  var offsetPoint = util_1.getOffsetPoint(displacedPointIndices.y, displacedPointIndices.x, targetKeypointId, offsets);
+  var score = scoresBuffer.get(displacedPointIndices.y, displacedPointIndices.x, targetKeypointId);
+  var targetKeypoint = util_2.addVectors({
+    x: displacedPointIndices.x * outputStride,
+    y: displacedPointIndices.y * outputStride
+  }, {
+    x: offsetPoint.x,
+    y: offsetPoint.y
   });
+  return {
+    position: targetKeypoint,
+    part: keypoints_1.partNames[targetKeypointId],
+    score: score
+  };
+}
+/**
+ * Follows the displacement fields to decode the full pose of the object
+ * instance given the position of a part that acts as root.
+ *
+ * @return An array of decoded keypoints and their scores for a single pose
+ */
+
+
+function decodePose(root, scores, offsets, outputStride, displacementsFwd, displacementsBwd) {
+  var numParts = scores.shape[2];
+  var numEdges = parentToChildEdges.length;
+  var instanceKeypoints = new Array(numParts); // Start a new detection instance at the position of the root.
+
+  var rootPart = root.part,
+      rootScore = root.score;
+  var rootPoint = util_2.getImageCoords(rootPart, outputStride, offsets);
+  instanceKeypoints[rootPart.id] = {
+    score: rootScore,
+    part: keypoints_1.partNames[rootPart.id],
+    position: rootPoint
+  }; // Decode the part positions upwards in the tree, following the backward
+  // displacements.
+
+  for (var edge = numEdges - 1; edge >= 0; --edge) {
+    var sourceKeypointId = parentToChildEdges[edge];
+    var targetKeypointId = childToParentEdges[edge];
+
+    if (instanceKeypoints[sourceKeypointId] && !instanceKeypoints[targetKeypointId]) {
+      instanceKeypoints[targetKeypointId] = traverseToTargetKeypoint(edge, instanceKeypoints[sourceKeypointId], targetKeypointId, scores, offsets, outputStride, displacementsBwd);
+    }
+  } // Decode the part positions downwards in the tree, following the forward
+  // displacements.
+
+
+  for (var edge = 0; edge < numEdges; ++edge) {
+    var sourceKeypointId = childToParentEdges[edge];
+    var targetKeypointId = parentToChildEdges[edge];
+
+    if (instanceKeypoints[sourceKeypointId] && !instanceKeypoints[targetKeypointId]) {
+      instanceKeypoints[targetKeypointId] = traverseToTargetKeypoint(edge, instanceKeypoints[sourceKeypointId], targetKeypointId, scores, offsets, outputStride, displacementsFwd);
+    }
+  }
+
+  return instanceKeypoints;
 }
 
-function getInstanceScore(e, t, r) {
-  return r.reduce(function (r, n, o) {
-    var i = n.position,
-        a = n.score;
-    return withinNmsRadiusOfCorrespondingPoint(e, t, i, o) || (r += a), r;
-  }, 0) / r.length;
-}
+exports.decodePose = decodePose;
+},{"../keypoints":"posenet/keypoints.ts","./util":"posenet/multi_pose/util.ts"}],"posenet/multi_pose/decode_multiple_poses.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
 
-var kLocalMaximumRadius = 1;
-
-function decodeMultiplePoses(e, t, r, n, o, i, a, s) {
-  return void 0 === a && (a = .5), void 0 === s && (s = 20), __awaiter(this, void 0, void 0, function () {
-    var u, l, c, p, f, h, d, v, m, g, b, y;
-    return __generator(this, function (w) {
-      switch (w.label) {
-        case 0:
-          return u = [], [4, toTensorBuffers3D([e, t, r, n])];
-
-        case 1:
-          for (l = w.sent(), c = l[0], p = l[1], f = l[2], h = l[3], d = buildPartWithScoreQueue(a, kLocalMaximumRadius, c), v = s * s; u.length < i && !d.empty();) m = d.dequeue(), g = getImageCoords(m.part, o, p), withinNmsRadiusOfCorrespondingPoint(u, v, g, m.part.id) || (b = decodePose(m, c, p, o, f, h), y = getInstanceScore(u, v, b), u.push({
-            keypoints: b,
-            score: y
-          }));
-
-          return [2, u];
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
       }
-    });
-  });
-}
+    }
 
-var GOOGLE_CLOUD_STORAGE_DIR = "https://storage.googleapis.com/tfjs-models/weights/posenet/",
-    checkpoints = {
-  1.01: {
-    url: GOOGLE_CLOUD_STORAGE_DIR + "mobilenet_v1_101/",
-    architecture: mobileNetArchitectures[100]
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : new P(function (resolve) {
+        resolve(result.value);
+      }).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
   },
-  1: {
-    url: GOOGLE_CLOUD_STORAGE_DIR + "mobilenet_v1_100/",
-    architecture: mobileNetArchitectures[100]
-  },
-  .75: {
-    url: GOOGLE_CLOUD_STORAGE_DIR + "mobilenet_v1_075/",
-    architecture: mobileNetArchitectures[75]
-  },
-  .5: {
-    url: GOOGLE_CLOUD_STORAGE_DIR + "mobilenet_v1_050/",
-    architecture: mobileNetArchitectures[50]
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
   }
 };
 
-function mod(e, t) {
-  return (0, tf.tidy)(function () {
-    var r = e.div((0, tf.scalar)(t, "int32"));
-    return e.sub(r.mul((0, tf.scalar)(t, "int32")));
+exports.__esModule = true;
+
+var util_1 = require("../util");
+
+var build_part_with_score_queue_1 = require("./build_part_with_score_queue");
+
+var decode_pose_1 = require("./decode_pose");
+
+var util_2 = require("./util");
+
+function withinNmsRadiusOfCorrespondingPoint(poses, squaredNmsRadius, _a, keypointId) {
+  var x = _a.x,
+      y = _a.y;
+  return poses.some(function (_a) {
+    var keypoints = _a.keypoints;
+    var correspondingKeypoint = keypoints[keypointId].position;
+    return util_2.squaredDistance(y, x, correspondingKeypoint.y, correspondingKeypoint.x) <= squaredNmsRadius;
   });
 }
+/* Score the newly proposed object instance without taking into account
+ * the scores of the parts that overlap with any previously detected
+ * instance.
+ */
 
-function argmax2d(e) {
-  var t = e.shape,
-      r = t[0],
-      n = t[1],
-      o = t[2];
-  return (0, tf.tidy)(function () {
-    var t = e.reshape([r * n, o]).argMax(0),
-        i = t.div((0, tf.scalar)(n, "int32")).expandDims(1),
-        a = mod(t, n).expandDims(1);
-    return (0, tf.concat)([i, a], 1);
-  });
-}
 
-function getPointsConfidence(e, t) {
-  for (var r = t.shape[0], n = new Float32Array(r), o = 0; o < r; o++) {
-    var i = t.get(o, 0),
-        a = t.get(o, 1);
-    n[o] = e.get(i, a, o);
+function getInstanceScore(existingPoses, squaredNmsRadius, instanceKeypoints) {
+  var notOverlappedKeypointScores = instanceKeypoints.reduce(function (result, _a, keypointId) {
+    var position = _a.position,
+        score = _a.score;
+
+    if (!withinNmsRadiusOfCorrespondingPoint(existingPoses, squaredNmsRadius, position, keypointId)) {
+      result += score;
+    }
+
+    return result;
+  }, 0.0);
+  return notOverlappedKeypointScores /= instanceKeypoints.length;
+} // A point (y, x) is considered as root part candidate if its score is a
+// maximum in a window |y - y'| <= kLocalMaximumRadius, |x - x'| <=
+// kLocalMaximumRadius.
+
+
+var kLocalMaximumRadius = 1;
+/**
+ * Detects multiple poses and finds their parts from part scores and
+ * displacement vectors. It returns up to `maxDetections` object instance
+ * detections in decreasing root score order. It works as follows: We first
+ * create a priority queue with local part score maxima above
+ * `scoreThreshold`, considering all parts at the same time. Then we
+ * iteratively pull the top  element of the queue (in decreasing score order)
+ * and treat it as a root candidate for a new object instance. To avoid
+ * duplicate detections, we reject the root candidate if it is within a disk
+ * of `nmsRadius` pixels from the corresponding part of a previously detected
+ * instance, which is a form of part-based non-maximum suppression (NMS). If
+ * the root candidate passes the NMS check, we start a new object instance
+ * detection, treating the corresponding part as root and finding the
+ * positions of the remaining parts by following the displacement vectors
+ * along the tree-structured part graph. We assign to the newly detected
+ * instance a score equal to the sum of scores of its parts which have not
+ * been claimed by a previous instance (i.e., those at least `nmsRadius`
+ * pixels away from the corresponding part of all previously detected
+ * instances), divided by the total number of parts `numParts`.
+ *
+ * @param heatmapScores 3-D tensor with shape `[height, width, numParts]`.
+ * The value of heatmapScores[y, x, k]` is the score of placing the `k`-th
+ * object part at position `(y, x)`.
+ *
+ * @param offsets 3-D tensor with shape `[height, width, numParts * 2]`.
+ * The value of [offsets[y, x, k], offsets[y, x, k + numParts]]` is the
+ * short range offset vector of the `k`-th  object part at heatmap
+ * position `(y, x)`.
+ *
+ * @param displacementsFwd 3-D tensor of shape
+ * `[height, width, 2 * num_edges]`, where `num_edges = num_parts - 1` is the
+ * number of edges (parent-child pairs) in the tree. It contains the forward
+ * displacements between consecutive part from the root towards the leaves.
+ *
+ * @param displacementsBwd 3-D tensor of shape
+ * `[height, width, 2 * num_edges]`, where `num_edges = num_parts - 1` is the
+ * number of edges (parent-child pairs) in the tree. It contains the backward
+ * displacements between consecutive part from the root towards the leaves.
+ *
+ * @param outputStride The output stride that was used when feed-forwarding
+ * through the PoseNet model.  Must be 32, 16, or 8.
+ *
+ * @param maxPoseDetections Maximum number of returned instance detections per
+ * image.
+ *
+ * @param scoreThreshold Only return instance detections that have root part
+ * score greater or equal to this value. Defaults to 0.5.
+ *
+ * @param nmsRadius Non-maximum suppression part distance. It needs to be
+ * strictly positive. Two parts suppress each other if they are less than
+ * `nmsRadius` pixels away. Defaults to 20.
+ *
+ * @return An array of poses and their scores, each containing keypoints and
+ * the corresponding keypoint scores.
+ */
+
+function decodeMultiplePoses(heatmapScores, offsets, displacementsFwd, displacementsBwd, outputStride, maxPoseDetections, scoreThreshold, nmsRadius) {
+  if (scoreThreshold === void 0) {
+    scoreThreshold = 0.5;
   }
 
-  return n;
+  if (nmsRadius === void 0) {
+    nmsRadius = 20;
+  }
+
+  return __awaiter(this, void 0, Promise, function () {
+    var poses, _a, scoresBuffer, offsetsBuffer, displacementsFwdBuffer, displacementsBwdBuffer, queue, squaredNmsRadius, root, rootImageCoords, keypoints, score;
+
+    return __generator(this, function (_b) {
+      switch (_b.label) {
+        case 0:
+          poses = [];
+          return [4
+          /*yield*/
+          , util_1.toTensorBuffers3D([heatmapScores, offsets, displacementsFwd, displacementsBwd])];
+
+        case 1:
+          _a = _b.sent(), scoresBuffer = _a[0], offsetsBuffer = _a[1], displacementsFwdBuffer = _a[2], displacementsBwdBuffer = _a[3];
+          queue = build_part_with_score_queue_1.buildPartWithScoreQueue(scoreThreshold, kLocalMaximumRadius, scoresBuffer);
+          squaredNmsRadius = nmsRadius * nmsRadius; // Generate at most maxDetections object instances per image in
+          // decreasing root part score order.
+
+          while (poses.length < maxPoseDetections && !queue.empty()) {
+            root = queue.dequeue();
+            rootImageCoords = util_2.getImageCoords(root.part, outputStride, offsetsBuffer);
+
+            if (withinNmsRadiusOfCorrespondingPoint(poses, squaredNmsRadius, rootImageCoords, root.part.id)) {
+              continue;
+            }
+
+            keypoints = decode_pose_1.decodePose(root, scoresBuffer, offsetsBuffer, outputStride, displacementsFwdBuffer, displacementsBwdBuffer);
+            score = getInstanceScore(poses, squaredNmsRadius, keypoints);
+            poses.push({
+              keypoints: keypoints,
+              score: score
+            });
+          }
+
+          return [2
+          /*return*/
+          , poses];
+      }
+    });
+  });
 }
 
-function getOffsetPoint$1(e, t, r, n) {
+exports.decodeMultiplePoses = decodeMultiplePoses;
+},{"../util":"posenet/util.ts","./build_part_with_score_queue":"posenet/multi_pose/build_part_with_score_queue.ts","./decode_pose":"posenet/multi_pose/decode_pose.ts","./util":"posenet/multi_pose/util.ts"}],"posenet/single_pose/argmax2d.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+var __importStar = this && this.__importStar || function (mod) {
+  if (mod && mod.__esModule) return mod;
+  var result = {};
+  if (mod != null) for (var k in mod) {
+    if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+  }
+  result["default"] = mod;
+  return result;
+};
+
+exports.__esModule = true;
+
+var tf = __importStar(require("@tensorflow/tfjs"));
+
+function mod(a, b) {
+  return tf.tidy(function () {
+    var floored = a.div(tf.scalar(b, 'int32'));
+    return a.sub(floored.mul(tf.scalar(b, 'int32')));
+  });
+}
+
+function argmax2d(inputs) {
+  var _a = inputs.shape,
+      height = _a[0],
+      width = _a[1],
+      depth = _a[2];
+  return tf.tidy(function () {
+    var reshaped = inputs.reshape([height * width, depth]);
+    var coords = reshaped.argMax(0);
+    var yCoords = coords.div(tf.scalar(width, 'int32')).expandDims(1);
+    var xCoords = mod(coords, width).expandDims(1);
+    return tf.concat([yCoords, xCoords], 1);
+  });
+}
+
+exports.argmax2d = argmax2d;
+},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js"}],"posenet/single_pose/util.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+var __importStar = this && this.__importStar || function (mod) {
+  if (mod && mod.__esModule) return mod;
+  var result = {};
+  if (mod != null) for (var k in mod) {
+    if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+  }
+  result["default"] = mod;
+  return result;
+};
+
+exports.__esModule = true;
+
+var tf = __importStar(require("@tensorflow/tfjs"));
+
+var keypoints_1 = require("../keypoints");
+
+function getPointsConfidence(heatmapScores, heatMapCoords) {
+  var numKeypoints = heatMapCoords.shape[0];
+  var result = new Float32Array(numKeypoints);
+
+  for (var keypoint = 0; keypoint < numKeypoints; keypoint++) {
+    var y = heatMapCoords.get(keypoint, 0);
+    var x = heatMapCoords.get(keypoint, 1);
+    result[keypoint] = heatmapScores.get(y, x, keypoint);
+  }
+
+  return result;
+}
+
+exports.getPointsConfidence = getPointsConfidence;
+
+function getOffsetPoint(y, x, keypoint, offsetsBuffer) {
   return {
-    y: n.get(e, t, r),
-    x: n.get(e, t, r + NUM_KEYPOINTS)
+    y: offsetsBuffer.get(y, x, keypoint),
+    x: offsetsBuffer.get(y, x, keypoint + keypoints_1.NUM_KEYPOINTS)
   };
 }
 
-function getOffsetVectors(e, t) {
-  for (var r = [], n = 0; n < NUM_KEYPOINTS; n++) {
-    var o = getOffsetPoint$1(e.get(n, 0).valueOf(), e.get(n, 1).valueOf(), n, t),
-        i = o.x,
-        a = o.y;
-    r.push(a), r.push(i);
+function getOffsetVectors(heatMapCoordsBuffer, offsetsBuffer) {
+  var result = [];
+
+  for (var keypoint = 0; keypoint < keypoints_1.NUM_KEYPOINTS; keypoint++) {
+    var heatmapY = heatMapCoordsBuffer.get(keypoint, 0).valueOf();
+    var heatmapX = heatMapCoordsBuffer.get(keypoint, 1).valueOf();
+
+    var _a = getOffsetPoint(heatmapY, heatmapX, keypoint, offsetsBuffer),
+        x = _a.x,
+        y = _a.y;
+
+    result.push(y);
+    result.push(x);
   }
 
-  return (0, tf.tensor2d)(r, [NUM_KEYPOINTS, 2]);
+  return tf.tensor2d(result, [keypoints_1.NUM_KEYPOINTS, 2]);
 }
 
-function getOffsetPoints(e, t, r) {
-  return (0, tf.tidy)(function () {
-    var n = getOffsetVectors(e, r);
-    return e.toTensor().mul((0, tf.scalar)(t, "int32")).toFloat().add(n);
+exports.getOffsetVectors = getOffsetVectors;
+
+function getOffsetPoints(heatMapCoordsBuffer, outputStride, offsetsBuffer) {
+  return tf.tidy(function () {
+    var offsetVectors = getOffsetVectors(heatMapCoordsBuffer, offsetsBuffer);
+    return heatMapCoordsBuffer.toTensor().mul(tf.scalar(outputStride, 'int32')).toFloat().add(offsetVectors);
   });
 }
 
-function decodeSinglePose(e, t, r) {
-  return __awaiter(this, void 0, void 0, function () {
-    var n, o, i, a, s, u, l, c, p, f;
-    return __generator(this, function (h) {
-      switch (h.label) {
+exports.getOffsetPoints = getOffsetPoints;
+},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","../keypoints":"posenet/keypoints.ts"}],"posenet/single_pose/decode_single_pose.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : new P(function (resolve) {
+        resolve(result.value);
+      }).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
+exports.__esModule = true;
+
+var keypoints_1 = require("../keypoints");
+
+var util_1 = require("../util");
+
+var argmax2d_1 = require("./argmax2d");
+
+var util_2 = require("./util");
+/**
+ * Detects a single pose and finds its parts from part scores and offset
+ * vectors. It returns a single pose detection. It works as follows:
+ * argmax2d is done on the scores to get the y and x index in the heatmap
+ * with the highest score for each part, which is essentially where the
+ * part is most likely to exist. This produces a tensor of size 17x2, with
+ * each row being the y and x index in the heatmap for each keypoint.
+ * The offset vector for each for each part is retrieved by getting the
+ * y and x from the offsets corresponding to the y and x index in the
+ * heatmap for that part. This produces a tensor of size 17x2, with each
+ * row being the offset vector for the corresponding keypoint.
+ * To get the keypoint, each part’s heatmap y and x are multiplied
+ * by the output stride then added to their corresponding offset vector,
+ * which is in the same scale as the original image.
+ *
+ * @param heatmapScores 3-D tensor with shape `[height, width, numParts]`.
+ * The value of heatmapScores[y, x, k]` is the score of placing the `k`-th
+ * object part at position `(y, x)`.
+ *
+ * @param offsets 3-D tensor with shape `[height, width, numParts * 2]`.
+ * The value of [offsets[y, x, k], offsets[y, x, k + numParts]]` is the
+ * short range offset vector of the `k`-th  object part at heatmap
+ * position `(y, x)`.
+ *
+ * @param outputStride The output stride that was used when feed-forwarding
+ * through the PoseNet model.  Must be 32, 16, or 8.
+ *
+ * @return A promise that resolves with single pose with a confidence score,
+ * which contains an array of keypoints indexed by part id, each with a score
+ * and position.
+ */
+
+
+function decodeSinglePose(heatmapScores, offsets, outputStride) {
+  return __awaiter(this, void 0, Promise, function () {
+    var totalScore, heatmapValues, _a, scoresBuffer, offsetsBuffer, heatmapValuesBuffer, offsetPoints, offsetPointsBuffer, keypointConfidence, keypoints;
+
+    return __generator(this, function (_b) {
+      switch (_b.label) {
         case 0:
-          return n = 0, o = argmax2d(e), [4, Promise.all([toTensorBuffer(e), toTensorBuffer(t), toTensorBuffer(o, "int32")])];
+          totalScore = 0.0;
+          heatmapValues = argmax2d_1.argmax2d(heatmapScores);
+          return [4
+          /*yield*/
+          , Promise.all([util_1.toTensorBuffer(heatmapScores), util_1.toTensorBuffer(offsets), util_1.toTensorBuffer(heatmapValues, 'int32')])];
 
         case 1:
-          return i = h.sent(), a = i[0], s = i[1], u = i[2], [4, toTensorBuffer(l = getOffsetPoints(u, r, s))];
+          _a = _b.sent(), scoresBuffer = _a[0], offsetsBuffer = _a[1], heatmapValuesBuffer = _a[2];
+          offsetPoints = util_2.getOffsetPoints(heatmapValuesBuffer, outputStride, offsetsBuffer);
+          return [4
+          /*yield*/
+          , util_1.toTensorBuffer(offsetPoints)];
 
         case 2:
-          return c = h.sent(), p = Array.from(getPointsConfidence(a, u)), f = p.map(function (e, t) {
-            return n += e, {
+          offsetPointsBuffer = _b.sent();
+          keypointConfidence = Array.from(util_2.getPointsConfidence(scoresBuffer, heatmapValuesBuffer));
+          keypoints = keypointConfidence.map(function (score, keypointId) {
+            totalScore += score;
+            return {
               position: {
-                y: c.get(t, 0),
-                x: c.get(t, 1)
+                y: offsetPointsBuffer.get(keypointId, 0),
+                x: offsetPointsBuffer.get(keypointId, 1)
               },
-              part: partNames[t],
-              score: e
+              part: keypoints_1.partNames[keypointId],
+              score: score
             };
-          }), o.dispose(), l.dispose(), [2, {
-            keypoints: f,
-            score: n / f.length
+          });
+          heatmapValues.dispose();
+          offsetPoints.dispose();
+          return [2
+          /*return*/
+          , {
+            keypoints: keypoints,
+            score: totalScore / keypoints.length
           }];
       }
     });
   });
 }
 
-var _this = void 0;
+exports.decodeSinglePose = decodeSinglePose;
+},{"../keypoints":"posenet/keypoints.ts","../util":"posenet/util.ts","./argmax2d":"posenet/single_pose/argmax2d.ts","./util":"posenet/single_pose/util.ts"}],"posenet/checkpoints.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
 
-function toInputTensor(e, t, r, n) {
-  var o = e instanceof tf.Tensor ? e : (0, tf.fromPixels)(e);
-  return n ? o.reverse(1).resizeBilinear([t, r]) : o.resizeBilinear([t, r]);
-}
+exports.__esModule = true;
 
-var PoseNet = function () {
-  function e(e) {
-    this.mobileNet = e;
+var mobilenet_1 = require("./mobilenet");
+
+var BASE_URL = 'posenet/';
+exports.checkpoints = {
+  1.01: {
+    url: BASE_URL + 'mobilenet_v1_101/',
+    architecture: mobilenet_1.mobileNetArchitectures[100]
+  },
+  1.0: {
+    url: BASE_URL + 'mobilenet_v1_100/',
+    architecture: mobilenet_1.mobileNetArchitectures[100]
+  },
+  0.75: {
+    url: BASE_URL + 'mobilenet_v1_075/',
+    architecture: mobilenet_1.mobileNetArchitectures[75]
+  },
+  0.5: {
+    url: BASE_URL + 'mobilenet_v1_050/',
+    architecture: mobilenet_1.mobileNetArchitectures[50]
+  }
+};
+},{"./mobilenet":"posenet/mobilenet.ts"}],"node_modules/@babel/runtime/helpers/typeof.js":[function(require,module,exports) {
+function _typeof2(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof2 = function _typeof2(obj) { return typeof obj; }; } else { _typeof2 = function _typeof2(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof2(obj); }
+
+function _typeof(obj) {
+  if (typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol") {
+    module.exports = _typeof = function _typeof(obj) {
+      return _typeof2(obj);
+    };
+  } else {
+    module.exports = _typeof = function _typeof(obj) {
+      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof2(obj);
+    };
   }
 
-  return e.prototype.predictForSinglePose = function (e, t) {
-    var r = this;
-    return void 0 === t && (t = 16), assertValidOutputStride(t), (0, tf.tidy)(function () {
-      var n = r.mobileNet.predict(e, t),
-          o = r.mobileNet.convToOutput(n, "heatmap_2"),
-          i = r.mobileNet.convToOutput(n, "offset_2");
-      return {
-        heatmapScores: o.sigmoid(),
-        offsets: i
-      };
-    });
-  }, e.prototype.predictForMultiPose = function (e, t) {
-    var r = this;
-    return void 0 === t && (t = 16), (0, tf.tidy)(function () {
-      var n = r.mobileNet.predict(e, t),
-          o = r.mobileNet.convToOutput(n, "heatmap_2"),
-          i = r.mobileNet.convToOutput(n, "offset_2"),
-          a = r.mobileNet.convToOutput(n, "displacement_fwd_2"),
-          s = r.mobileNet.convToOutput(n, "displacement_bwd_2");
-      return {
-        heatmapScores: o.sigmoid(),
-        offsets: i,
-        displacementFwd: a,
-        displacementBwd: s
-      };
-    });
-  }, e.prototype.estimateSinglePose = function (e, t, r, n) {
-    return void 0 === t && (t = .5), void 0 === r && (r = !1), void 0 === n && (n = 16), __awaiter(this, void 0, void 0, function () {
-      var o,
-          i,
-          a,
-          s,
-          u,
-          l,
-          c,
-          p,
-          f,
-          h = this;
-      return __generator(this, function (d) {
-        switch (d.label) {
+  return _typeof(obj);
+}
+
+module.exports = _typeof;
+},{}],"posenet/model_weights.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+
+var ModelWeights =
+/** @class */
+function () {
+  function ModelWeights(variables) {
+    this.variables = variables;
+  }
+
+  ModelWeights.prototype.weights = function (layerName) {
+    return this.variables["MobilenetV1/" + layerName + "/weights"];
+  };
+
+  ModelWeights.prototype.depthwiseBias = function (layerName) {
+    return this.variables["MobilenetV1/" + layerName + "/biases"];
+  };
+
+  ModelWeights.prototype.convBias = function (layerName) {
+    return this.depthwiseBias(layerName);
+  };
+
+  ModelWeights.prototype.depthwiseWeights = function (layerName) {
+    return this.variables["MobilenetV1/" + layerName + "/depthwise_weights"];
+  };
+
+  ModelWeights.prototype.dispose = function () {
+    for (var varName in this.variables) {
+      this.variables[varName].dispose();
+    }
+  };
+
+  return ModelWeights;
+}();
+
+exports.ModelWeights = ModelWeights;
+},{}],"posenet/posenet_model.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+var _typeof2 = _interopRequireDefault(require("@babel/runtime/helpers/typeof"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __awaiter = void 0 && (void 0).__awaiter || function (thisArg, _arguments, P, generator) {
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : new P(function (resolve) {
+        resolve(result.value);
+      }).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = void 0 && (void 0).__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
           case 0:
-            return assertValidOutputStride(n), assertValidScaleFactor(t), o = e instanceof tf.Tensor ? [e.shape[0], e.shape[1]] : [e.height, e.width], i = o[0], a = o[1], s = getValidResolution(t, i, n), u = getValidResolution(t, a, n), l = (0, tf.tidy)(function () {
-              var t = toInputTensor(e, s, u, r);
-              return h.predictForSinglePose(t, n);
-            }), c = l.heatmapScores, p = l.offsets, [4, decodeSinglePose(c, p, n)];
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
+var __importStar = void 0 && (void 0).__importStar || function (mod) {
+  if (mod && mod.__esModule) return mod;
+  var result = {};
+  if (mod != null) for (var k in mod) {
+    if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+  }
+  result["default"] = mod;
+  return result;
+};
+
+var _this = void 0;
+
+exports.__esModule = true;
+
+var tf = __importStar(require("@tensorflow/tfjs"));
+
+var checkpoint_loader_1 = require("./checkpoint_loader");
+
+var checkpoints_1 = require("./checkpoints");
+
+var mobilenet_1 = require("./mobilenet");
+
+var model_weights_1 = require("./model_weights");
+
+var decode_multiple_poses_1 = require("./multi_pose/decode_multiple_poses");
+
+var decode_single_pose_1 = require("./single_pose/decode_single_pose");
+
+var util_1 = require("./util");
+
+var PoseNet =
+/** @class */
+function () {
+  function PoseNet(mobileNet) {
+    this.mobileNet = mobileNet;
+  }
+  /**
+   * Infer through PoseNet. This does standard ImageNet pre-processing before
+   * inferring through the model. The image should have pixels values in the range
+   * [0-255]. This method returns the heatmaps and offsets.  Infers through the
+   * outputs that are needed for single pose decoding
+   *
+   * @param input un-preprocessed input image, with values in range [0-255]
+   * @param outputStride the desired stride for the outputs.  Must be 32, 16,
+   * or 8. Defaults to 16.  The output width and height will be will be
+   * (inputDimension - 1)/outputStride + 1
+   * @return heatmapScores, offsets
+   */
+
+
+  PoseNet.prototype.predictForSinglePose = function (input, outputStride) {
+    var _this = this;
+
+    if (outputStride === void 0) {
+      outputStride = 16;
+    }
+
+    mobilenet_1.assertValidOutputStride(outputStride);
+    return tf.tidy(function () {
+      var mobileNetOutput = _this.mobileNet.predict(input, outputStride);
+
+      var heatmaps = _this.mobileNet.convToOutput(mobileNetOutput, 'heatmap_2');
+
+      var offsets = _this.mobileNet.convToOutput(mobileNetOutput, 'offset_2');
+
+      return {
+        heatmapScores: heatmaps.sigmoid(),
+        offsets: offsets
+      };
+    });
+  };
+  /**
+   * Infer through PoseNet. This does standard ImageNet pre-processing before
+   * inferring through the model. The image should pixels should have values
+   * [0-255]. Infers through the outputs that are needed for multiple pose
+   * decoding. This method returns the heatmaps offsets, and mid-range
+   * displacements.
+   *
+   * @param input un-preprocessed input image, with values in range [0-255]
+   * @param outputStride the desired stride for the outputs.  Must be 32, 16,
+   * or 8. Defaults to 16. The output width and height will be will be
+   * (inputDimension - 1)/outputStride + 1
+   * @return heatmapScores, offsets, displacementFwd, displacementBwd
+   */
+
+
+  PoseNet.prototype.predictForMultiPose = function (input, outputStride) {
+    var _this = this;
+
+    if (outputStride === void 0) {
+      outputStride = 16;
+    }
+
+    return tf.tidy(function () {
+      var mobileNetOutput = _this.mobileNet.predict(input, outputStride);
+
+      var heatmaps = _this.mobileNet.convToOutput(mobileNetOutput, 'heatmap_2');
+
+      var offsets = _this.mobileNet.convToOutput(mobileNetOutput, 'offset_2');
+
+      var displacementFwd = _this.mobileNet.convToOutput(mobileNetOutput, 'displacement_fwd_2');
+
+      var displacementBwd = _this.mobileNet.convToOutput(mobileNetOutput, 'displacement_bwd_2');
+
+      return {
+        heatmapScores: heatmaps.sigmoid(),
+        offsets: offsets,
+        displacementFwd: displacementFwd,
+        displacementBwd: displacementBwd
+      };
+    });
+  };
+  /**
+   * Infer through PoseNet, and estimates a single pose using the outputs. This
+   * does standard ImageNet pre-processing before inferring through the model.
+   * The image should pixels should have values [0-255].
+   * This method returns a single pose.
+   *
+   * @param input ImageData|HTMLImageElement|HTMLCanvasElement|HTMLVideoElement)
+   * The input image to feed through the network.
+   *
+   * @param imageScaleFactor A number between 0.2 and 1. Defaults to 0.50. What
+   * to scale the image by before feeding it through the network.  Set this
+   * number lower to scale down the image and increase the speed when feeding
+   * through the network at the cost of accuracy.
+   *
+   * @param flipHorizontal.  Defaults to false.  If the poses should be
+   * flipped/mirrored  horizontally.  This should be set to true for videos
+   * where the video is by default flipped horizontally (i.e. a webcam), and you
+   * want the poses to be returned in the proper orientation.
+   *
+   * @param outputStride the desired stride for the outputs.  Must be 32, 16,
+   * or 8. Defaults to 16. The output width and height will be will be
+   * (inputDimension - 1)/outputStride + 1
+   * @return A single pose with a confidence score, which contains an array of
+   * keypoints indexed by part id, each with a score and position.  The
+   * positions of the keypoints are in the same scale as the original image
+   */
+
+
+  PoseNet.prototype.estimateSinglePose = function (input, imageScaleFactor, flipHorizontal, outputStride) {
+    if (imageScaleFactor === void 0) {
+      imageScaleFactor = 0.5;
+    }
+
+    if (flipHorizontal === void 0) {
+      flipHorizontal = false;
+    }
+
+    if (outputStride === void 0) {
+      outputStride = 16;
+    }
+
+    return __awaiter(this, void 0, Promise, function () {
+      var _a, height, width, resizedHeight, resizedWidth, _b, heatmapScores, offsets, pose, scaleY, scaleX;
+
+      var _this = this;
+
+      return __generator(this, function (_c) {
+        switch (_c.label) {
+          case 0:
+            mobilenet_1.assertValidOutputStride(outputStride);
+            mobilenet_1.assertValidScaleFactor(imageScaleFactor);
+            _a = util_1.getInputTensorDimensions(input), height = _a[0], width = _a[1];
+            resizedHeight = util_1.getValidResolution(imageScaleFactor, height, outputStride);
+            resizedWidth = util_1.getValidResolution(imageScaleFactor, width, outputStride);
+            _b = tf.tidy(function () {
+              var inputTensor = util_1.toResizedInputTensor(input, resizedHeight, resizedWidth, flipHorizontal);
+              return _this.predictForSinglePose(inputTensor, outputStride);
+            }), heatmapScores = _b.heatmapScores, offsets = _b.offsets;
+            return [4
+            /*yield*/
+            , decode_single_pose_1.decodeSinglePose(heatmapScores, offsets, outputStride)];
 
           case 1:
-            return f = d.sent(), c.dispose(), p.dispose(), [2, scalePose(f, i / s, a / u)];
+            pose = _c.sent();
+            scaleY = height / resizedHeight;
+            scaleX = width / resizedWidth;
+            heatmapScores.dispose();
+            offsets.dispose();
+            return [2
+            /*return*/
+            , util_1.scalePose(pose, scaleY, scaleX)];
         }
       });
     });
-  }, e.prototype.estimateMultiplePoses = function (e, t, r, n, o, i, a) {
-    return void 0 === t && (t = .5), void 0 === r && (r = !1), void 0 === n && (n = 16), void 0 === o && (o = 5), void 0 === i && (i = .5), void 0 === a && (a = 20), __awaiter(this, void 0, void 0, function () {
-      var s,
-          u,
-          l,
-          c,
-          p,
-          f,
-          h,
-          d,
-          v,
-          m,
-          g,
-          b = this;
-      return __generator(this, function (y) {
-        switch (y.label) {
+  };
+  /**
+   * Infer through PoseNet, and estimates multiple poses using the outputs.
+   * This does standard ImageNet pre-processing before inferring through the
+   * model. The image should pixels should have values [0-255]. It detects
+   * multiple poses and finds their parts from part scores and displacement
+   * vectors using a fast greedy decoding algorithm.  It returns up to
+   * `maxDetections` object instance detections in decreasing root score order.
+   *
+   * @param input ImageData|HTMLImageElement|HTMLCanvasElement|HTMLVideoElement)
+   * The input image to feed through the network.
+   *
+   * @param imageScaleFactor  A number between 0.2 and 1. Defaults to 0.50. What
+   * to scale the image by before feeding it through the network.  Set this
+   * number lower to scale down the image and increase the speed when feeding
+   * through the network at the cost of accuracy.
+   *
+   * @param flipHorizontal Defaults to false.  If the poses should be
+   * flipped/mirrored  horizontally.  This should be set to true for videos
+   * where the video is by default flipped horizontally (i.e. a webcam), and you
+   * want the poses to be returned in the proper orientation.
+   *
+   * @param outputStride the desired stride for the outputs.  Must be 32, 16,
+   * or 8. Defaults to 16. The output width and height will be will be
+   * (inputSize - 1)/outputStride + 1
+   *
+   * @param maxDetections Maximum number of returned instance detections per
+   * image. Defaults to 5.
+   *
+   * @param scoreThreshold Only return instance detections that have root part
+   * score greater or equal to this value. Defaults to 0.5
+   *
+   * @param nmsRadius Non-maximum suppression part distance in pixels. It needs
+   * to be strictly positive. Two parts suppress each other if they are less
+   * than `nmsRadius` pixels away. Defaults to 20.
+   *
+   * @return An array of poses and their scores, each containing keypoints and
+   * the corresponding keypoint scores.  The positions of the keypoints are
+   * in the same scale as the original image
+   */
+
+
+  PoseNet.prototype.estimateMultiplePoses = function (input, imageScaleFactor, flipHorizontal, outputStride, maxDetections, scoreThreshold, nmsRadius) {
+    if (imageScaleFactor === void 0) {
+      imageScaleFactor = 0.5;
+    }
+
+    if (flipHorizontal === void 0) {
+      flipHorizontal = false;
+    }
+
+    if (outputStride === void 0) {
+      outputStride = 16;
+    }
+
+    if (maxDetections === void 0) {
+      maxDetections = 5;
+    }
+
+    if (scoreThreshold === void 0) {
+      scoreThreshold = .5;
+    }
+
+    if (nmsRadius === void 0) {
+      nmsRadius = 20;
+    }
+
+    return __awaiter(this, void 0, Promise, function () {
+      var _a, height, width, resizedHeight, resizedWidth, _b, heatmapScores, offsets, displacementFwd, displacementBwd, poses, scaleY, scaleX;
+
+      var _this = this;
+
+      return __generator(this, function (_c) {
+        switch (_c.label) {
           case 0:
-            return assertValidOutputStride(n), assertValidScaleFactor(t), s = e instanceof tf.Tensor ? [e.shape[0], e.shape[1]] : [e.height, e.width], u = s[0], l = s[1], c = getValidResolution(t, u, n), p = getValidResolution(t, l, n), f = (0, tf.tidy)(function () {
-              var t = toInputTensor(e, c, p, r);
-              return b.predictForMultiPose(t, n);
-            }), h = f.heatmapScores, d = f.offsets, v = f.displacementFwd, m = f.displacementBwd, [4, decodeMultiplePoses(h, d, v, m, n, o, i, a)];
+            mobilenet_1.assertValidOutputStride(outputStride);
+            mobilenet_1.assertValidScaleFactor(imageScaleFactor);
+            _a = util_1.getInputTensorDimensions(input), height = _a[0], width = _a[1];
+            resizedHeight = util_1.getValidResolution(imageScaleFactor, height, outputStride);
+            resizedWidth = util_1.getValidResolution(imageScaleFactor, width, outputStride);
+            _b = tf.tidy(function () {
+              var inputTensor = util_1.toResizedInputTensor(input, resizedHeight, resizedWidth, flipHorizontal);
+              return _this.predictForMultiPose(inputTensor, outputStride);
+            }), heatmapScores = _b.heatmapScores, offsets = _b.offsets, displacementFwd = _b.displacementFwd, displacementBwd = _b.displacementBwd;
+            return [4
+            /*yield*/
+            , decode_multiple_poses_1.decodeMultiplePoses(heatmapScores, offsets, displacementFwd, displacementBwd, outputStride, maxDetections, scoreThreshold, nmsRadius)];
 
           case 1:
-            return g = y.sent(), h.dispose(), d.dispose(), v.dispose(), m.dispose(), [2, scalePoses(g, u / c, l / p)];
+            poses = _c.sent();
+            heatmapScores.dispose();
+            offsets.dispose();
+            displacementFwd.dispose();
+            displacementBwd.dispose();
+            scaleY = height / resizedHeight;
+            scaleX = width / resizedWidth;
+            return [2
+            /*return*/
+            , util_1.scalePoses(poses, scaleY, scaleX)];
         }
       });
     });
-  }, e.prototype.dispose = function () {
+  };
+
+  PoseNet.prototype.dispose = function () {
     this.mobileNet.dispose();
-  }, e;
+  };
+
+  return PoseNet;
 }();
 
 exports.PoseNet = PoseNet;
+/**
+ * Loads the PoseNet model instance from a checkpoint, with the MobileNet
+ * architecture specified by the multiplier.
+ *
+ * @param multiplier An optional number with values: 1.01, 1.0, 0.75, or
+ * 0.50. Defaults to 1.01. It is the float multiplier for the depth (number of
+ * channels) for all convolution ops. The value corresponds to a MobileNet
+ * architecture and checkpoint.  The larger the value, the larger the size of
+ * the layers, and more accurate the model at the cost of speed.  Set this to
+ * a smaller value to increase speed at the cost of accuracy.
+ *
+ */
 
-function load(e) {
-  return void 0 === e && (e = 1.01), __awaiter(this, void 0, void 0, function () {
-    var t, r;
-    return __generator(this, function (n) {
-      switch (n.label) {
+function load(multiplier) {
+  if (multiplier === void 0) {
+    multiplier = 1.01;
+  }
+
+  return __awaiter(this, void 0, Promise, function () {
+    var possibleMultipliers, mobileNet;
+    return __generator(this, function (_a) {
+      switch (_a.label) {
         case 0:
-          if (null == tf) throw new Error("Cannot find TensorFlow.js. If you are using a <script> tag, please also include @tensorflow/tfjs on the page before using this model.");
-          return t = Object.keys(checkpoints), tf.util.assert("number" == typeof e, "got multiplier type of " + typeof e + " when it should be a number."), tf.util.assert(t.indexOf(e.toString()) >= 0, "invalid multiplier value of " + e + ".  No checkpoint exists for that multiplier. Must be one of " + t.join(",") + "."), [4, mobilenetLoader.load(e)];
+          if (tf == null) {
+            throw new Error("Cannot find TensorFlow.js. If you are using a <script> tag, please " + "also include @tensorflow/tfjs on the page before using this model.");
+          }
+
+          possibleMultipliers = Object.keys(checkpoints_1.checkpoints);
+          tf.util.assert(typeof multiplier === 'number', "got multiplier type of " + (0, _typeof2.default)(multiplier) + " when it should be a " + "number.");
+          tf.util.assert(possibleMultipliers.indexOf(multiplier.toString()) >= 0, "invalid multiplier value of " + multiplier + ".  No checkpoint exists for that " + ("multiplier. Must be one of " + possibleMultipliers.join(',') + "."));
+          return [4
+          /*yield*/
+          , exports.mobilenetLoader.load(multiplier)];
 
         case 1:
-          return r = n.sent(), [2, new PoseNet(r)];
+          mobileNet = _a.sent();
+          return [2
+          /*return*/
+          , new PoseNet(mobileNet)];
       }
     });
   });
 }
 
-var mobilenetLoader = {
-  load: function (e) {
-    return __awaiter(_this, void 0, void 0, function () {
-      var t, r;
-      return __generator(this, function (n) {
-        switch (n.label) {
+exports.load = load;
+exports.mobilenetLoader = {
+  load: function load(multiplier) {
+    return __awaiter(_this, void 0, Promise, function () {
+      var checkpoint, checkpointLoader, variables, weights;
+      return __generator(this, function (_a) {
+        switch (_a.label) {
           case 0:
-            return t = checkpoints[e], [4, new CheckpointLoader(t.url).getAllVariables()];
+            checkpoint = checkpoints_1.checkpoints[multiplier];
+            checkpointLoader = new checkpoint_loader_1.CheckpointLoader(checkpoint.url);
+            return [4
+            /*yield*/
+            , checkpointLoader.getAllVariables()];
 
           case 1:
-            return r = n.sent(), [2, new MobileNet(r, t.architecture)];
+            variables = _a.sent();
+            weights = new model_weights_1.ModelWeights(variables);
+            return [2
+            /*return*/
+            , new mobilenet_1.MobileNet(weights, checkpoint.architecture)];
         }
       });
     });
   }
 };
-},{"@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js"}],"node_modules/@babel/runtime/helpers/classCallCheck.js":[function(require,module,exports) {
+},{"@babel/runtime/helpers/typeof":"node_modules/@babel/runtime/helpers/typeof.js","@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","./checkpoint_loader":"posenet/checkpoint_loader.ts","./checkpoints":"posenet/checkpoints.ts","./mobilenet":"posenet/mobilenet.ts","./model_weights":"posenet/model_weights.ts","./multi_pose/decode_multiple_poses":"posenet/multi_pose/decode_multiple_poses.ts","./single_pose/decode_single_pose":"posenet/single_pose/decode_single_pose.ts","./util":"posenet/util.ts"}],"posenet/types.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google LLC. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+},{}],"posenet/index.ts":[function(require,module,exports) {
+"use strict";
+/**
+ * @license
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * =============================================================================
+ */
+
+exports.__esModule = true;
+
+var checkpoint_loader_1 = require("./checkpoint_loader");
+
+exports.CheckpointLoader = checkpoint_loader_1.CheckpointLoader;
+
+var mobilenet_1 = require("./mobilenet");
+
+exports.ConvolutionDefinition = mobilenet_1.ConvolutionDefinition;
+exports.MobileNet = mobilenet_1.MobileNet;
+exports.mobileNetArchitectures = mobilenet_1.mobileNetArchitectures;
+exports.MobileNetMultiplier = mobilenet_1.MobileNetMultiplier;
+exports.OutputStride = mobilenet_1.OutputStride;
+
+var decode_multiple_poses_1 = require("./multi_pose/decode_multiple_poses");
+
+exports.decodeMultiplePoses = decode_multiple_poses_1.decodeMultiplePoses;
+
+var decode_single_pose_1 = require("./single_pose/decode_single_pose");
+
+exports.decodeSinglePose = decode_single_pose_1.decodeSinglePose;
+
+var checkpoints_1 = require("./checkpoints");
+
+exports.Checkpoint = checkpoints_1.Checkpoint;
+exports.checkpoints = checkpoints_1.checkpoints;
+
+var keypoints_1 = require("./keypoints");
+
+exports.partChannels = keypoints_1.partChannels;
+exports.partIds = keypoints_1.partIds;
+exports.partNames = keypoints_1.partNames;
+exports.poseChain = keypoints_1.poseChain;
+
+var posenet_model_1 = require("./posenet_model");
+
+exports.load = posenet_model_1.load;
+exports.PoseNet = posenet_model_1.PoseNet;
+
+var types_1 = require("./types");
+
+exports.Keypoint = types_1.Keypoint;
+exports.Pose = types_1.Pose;
+
+var util_1 = require("./util");
+
+exports.getAdjacentKeyPoints = util_1.getAdjacentKeyPoints;
+exports.getBoundingBox = util_1.getBoundingBox;
+exports.getBoundingBoxPoints = util_1.getBoundingBoxPoints;
+exports.scalePose = util_1.scalePose;
+},{"./checkpoint_loader":"posenet/checkpoint_loader.ts","./mobilenet":"posenet/mobilenet.ts","./multi_pose/decode_multiple_poses":"posenet/multi_pose/decode_multiple_poses.ts","./single_pose/decode_single_pose":"posenet/single_pose/decode_single_pose.ts","./checkpoints":"posenet/checkpoints.ts","./keypoints":"posenet/keypoints.ts","./posenet_model":"posenet/posenet_model.ts","./types":"posenet/types.ts","./util":"posenet/util.ts"}],"node_modules/@babel/runtime/helpers/classCallCheck.js":[function(require,module,exports) {
 function _classCallCheck(instance, Constructor) {
   if (!(instance instanceof Constructor)) {
     throw new TypeError("Cannot call a class as a function");
@@ -52543,7 +54273,7 @@ var _asyncToGenerator2 = _interopRequireDefault(require("@babel/runtime/helpers/
 
 var tf = _interopRequireWildcard(require("@tensorflow/tfjs"));
 
-var posenet = _interopRequireWildcard(require("@tensorflow-models/posenet"));
+var posenet = _interopRequireWildcard(require("./posenet"));
 
 var _controller_dataset = require("./controller_dataset");
 
@@ -52785,6 +54515,14 @@ function start(video) {
 
 
 var video;
+document.addEventListener("DOMContentLoaded", ready);
+
+function ready() {
+  // alert('DOM is ready');
+  // image is not yet loaded (unless was cached), so the size is 0x0
+  init();
+}
+
 document.getElementById('predict').addEventListener('click', function () {
   // if (controllerDataset.xs == null) {
   //     alert('请先设定键位');
@@ -52915,12 +54653,12 @@ function _init() {
             throw _context6.t0;
 
           case 12:
-            _context6.next = 14;
+            ui.init();
+            _context6.next = 15;
             return loadMobilenet();
 
-          case 14:
+          case 15:
             mobilenet = _context6.sent;
-            ui.init();
             start(video); // Warm up the model. This uploads weights to the GPU and compiles the WebGL
             // programs so the first time we collect data from the webcam it will be
             // quick.
@@ -52935,7 +54673,5 @@ function _init() {
   }));
   return _init.apply(this, arguments);
 }
-
-init();
-},{"@babel/runtime/regenerator":"node_modules/@babel/runtime/regenerator/index.js","@babel/runtime/helpers/asyncToGenerator":"node_modules/@babel/runtime/helpers/asyncToGenerator.js","@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","@tensorflow-models/posenet":"node_modules/@tensorflow-models/posenet/dist/posenet.esm.js","./controller_dataset":"controller_dataset.js","./ui":"ui.js","./webcam":"webcam.js"}]},{},["index.js"], null)
+},{"@babel/runtime/regenerator":"node_modules/@babel/runtime/regenerator/index.js","@babel/runtime/helpers/asyncToGenerator":"node_modules/@babel/runtime/helpers/asyncToGenerator.js","@tensorflow/tfjs":"node_modules/@tensorflow/tfjs/dist/tf.esm.js","./posenet":"posenet/index.ts","./controller_dataset":"controller_dataset.js","./ui":"ui.js","./webcam":"webcam.js"}]},{},["index.js"], null)
 //# sourceMappingURL=/tsjs.e31bb0bc.map

@@ -343,8 +343,8 @@ var init = function init() {
 };
 
 var nextLevel = function nextLevel() {
-  ballSpeedX = 3;
-  ballSpeedY = 3;
+  ballSpeedX += 2;
+  ballSpeedY += 2;
   ballX = 150;
   ballY = 219;
   ballWidth = 30;
