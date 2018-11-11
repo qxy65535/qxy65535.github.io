@@ -343,8 +343,8 @@ var init = function init() {
     ballSpeedX = 5;
     ballSpeedY = 5;
   } else {
-    ballSpeedX = 5;
-    ballSpeedY = 5;
+    ballSpeedX = 3;
+    ballSpeedY = 3;
   }
 
   ballX = 150;
