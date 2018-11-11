@@ -143,6 +143,18 @@ paddle.onload = function () {
   context.drawImage(paddle, paddleX, paddleY, paddleWidth, paddleHeight);
 };
 
+function isMobile() {
+  return isAndroid() || isiOS();
+}
+
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent);
+}
+
+function isiOS() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 board.move = function (direction) {
   if (direction === 37) {
     pause = false;
@@ -326,8 +338,15 @@ var runloop = function runloop() {
 
 var init = function init() {
   level = 1;
-  ballSpeedX = 5;
-  ballSpeedY = 5;
+
+  if (isMobile()) {
+    ballSpeedX = 5;
+    ballSpeedY = 5;
+  } else {
+    ballSpeedX = 5;
+    ballSpeedY = 5;
+  }
+
   ballX = 150;
   ballY = 219;
   ballWidth = 30;
@@ -343,8 +362,8 @@ var init = function init() {
 };
 
 var nextLevel = function nextLevel() {
-  ballSpeedX = 5;
-  ballSpeedY = 5;
+  ballSpeedX += 1;
+  ballSpeedY += 1;
   ballX = 150;
   ballY = 219;
   ballWidth = 30;
