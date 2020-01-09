@@ -1,0 +1,23 @@
+<h1 id="文档生成">
+ 文档生成
+</h1>
+<h2 id="使用方法">
+ 使用方法
+</h2>
+<div class="sourceCode">
+ <pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">qxy@ubuntu</span>:~/autodoc$ python3 main.py -h
+<span class="kw">usage</span>: main.py [-h] [-doc DOC] [-dist DIST]
+
+<span class="kw">optional</span> arguments:
+  <span class="kw">-h</span>, --help            show this help message and exit
+  <span class="kw">-doc</span> DOC, --doc-dir DOC
+                        <span class="kw">input</span> dir for markdowns, default: <span class="ot">$(</span><span class="kw">pwd</span><span class="ot">)</span>/doc
+  <span class="kw">-dist</span> DIST, --dist-dir DIST
+                        <span class="kw">output</span> dist for htmls, default: <span class="ot">$(</span><span class="kw">pwd</span><span class="ot">)</span>/dist</code></pre>
+</div>
+<h2 id="example">
+ example
+</h2>
+<div class="sourceCode">
+ <pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">qxy@ubuntu</span>:~/autodoc$ python3 main.py -doc example/doc/ -dist example/dist/</code></pre>
+</div>

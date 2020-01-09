@@ -1,0 +1,235 @@
+<h1 id="注意事项">
+ 注意事项
+</h1>
+<h2 id="关于自动文档生成脚本">
+ 关于自动文档生成脚本
+</h2>
+<p>
+ 自动文档生成脚本
+ <code>
+  main.py
+ </code>
+ 所生成的静态页依赖于模板文件
+ <code>
+  template.html
+ </code>
+ 和样式等资源文件夹
+ <code>
+  statics
+ </code>
+ ，因此必须保证
+ <code>
+  statics
+ </code>
+ 和
+ <code>
+  template.html
+ </code>
+ 在同一目录下。生成文档后，它们会被拷贝到
+ <code>
+  dist
+ </code>
+ 下，
+ <code>
+  template.html
+ </code>
+ 重命名为
+ <code>
+  index.html
+ </code>
+</p>
+<p>
+ 服务器可将
+ <code>
+  dist/statics
+ </code>
+ 和
+ <code>
+  index.html
+ </code>
+ 放置于根目录下，直接访问
+ <code>
+  index.html
+ </code>
+</p>
+<p>
+ 生成
+ <code>
+  dist
+ </code>
+ 中的
+ <code>
+  html
+ </code>
+ 文件目录与输入
+ <code>
+  doc
+ </code>
+ 中的
+ <code>
+  markdown
+ </code>
+ 文件目录一致。由于页面内容通过
+ <code>
+  jquery
+ </code>
+ 的
+ <code>
+  load
+ </code>
+ 方法载入，因此必须通过服务器访问页面，否则产生跨域问题
+</p>
+<h2 id="关于样式">
+ 关于样式
+</h2>
+<p>
+ 主页外观、样式可通过编辑
+ <code>
+  template.html
+ </code>
+ 及
+ <code>
+  statics/style.css
+ </code>
+ 更改，代码高亮样式可在
+ <code>
+  template.html
+ </code>
+ 中修改以下内容进行选择。不同样式文件包含于
+ <code>
+  statics/styles
+ </code>
+ 中
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode html"><code class="sourceCode html"><span class="kw">&lt;link</span><span class="ot"> rel=</span><span class="st">"stylesheet"</span><span class="ot"> href=</span><span class="st">"/statics/styles/github.css"</span><span class="kw">&gt;</span></code></pre>
+</div>
+<h2 id="关于图片">
+ 关于图片
+</h2>
+<p>
+ <img src="assets/Bye_Mice.png" style="zoom: 25%;"/>
+</p>
+<p>
+ 插入图片需要在当前
+ <code>
+  markdown
+ </code>
+ 同级目录下建立
+ <code>
+  assets
+ </code>
+ 文件夹，并将图片放于
+ <code>
+  assets
+ </code>
+ 下，使用相对路径引用，如上图。脚本会将所有
+ <code>
+  assets
+ </code>
+ 下的文件及文件夹拷贝到
+ <code>
+  dist
+ </code>
+ 顶层
+ <code>
+  assets
+ </code>
+ 目录下
+</p>
+<h2 id="关于id和页内跳转">
+ 关于id和页内跳转
+</h2>
+<p>
+ 跳转到内部文档的某页，链接格式需写为
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown"><span class="ot">[name](#/dir/doc_filename#id)</span></code></pre>
+</div>
+<p>
+ <code>
+  pandoc
+ </code>
+ 的锚点
+ <code>
+  id
+ </code>
+ 默认是根据标题名字自动生成的，因此
+ <code>
+  id
+ </code>
+ 为标题内容，若标题中包含空格，用
+ <code>
+  -
+ </code>
+ 代替
+</p>
+<p>
+ 若想使用自定义锚点
+ <code>
+  id
+ </code>
+ ，
+ <code>
+  pandoc
+ </code>
+ 语法为
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown"><span class="fu">## 标题{#yourtitle}</span></code></pre>
+</div>
+<p>
+ 此时请注意
+ <code>
+  id
+ </code>
+ 的唯一性，否则可能造成跳转冲突
+</p>
+<h3 id="例子">
+ 例子
+</h3>
+<p>
+ <a href="#/0_introduction#INTRODUCTION">
+  跳转到INTRODUCTION
+ </a>
+</p>
+<p>
+ <a href="#/1_get_start/1_generate#example">
+  跳转到文档生成的example
+ </a>
+</p>
+<p>
+ <a href="#/1_get_start/2_note#关于样式">
+  跳转到本页的关于样式
+ </a>
+</p>
+<p>
+ <a href="#/1_get_start/1_generate">
+  也可以不带锚点跳转到文档生成
+ </a>
+</p>
+<h2 id="关于文档的文件名和目录名">
+ 关于文档的文件名和目录名
+</h2>
+<p>
+ 目录和文件必须以
+ <strong>
+  <code>
+   数字_标题
+  </code>
+ </strong>
+ 的格式命名，在左侧导航目录的展示顺序由目录名中的数字决定。若不按照此格式进行命名，排序顺序将随缘
+</p>
+<p>
+ <code>
+  markdown
+ </code>
+ 文件在导航目录中的标题以文件中第一个一级标题决定
+</p>
+<p>
+ 目录文件夹在导航目录中的标题由目录本身决定，目前脚本将去掉其数字前缀并替换
+ <code>
+  _
+ </code>
+ 为空格
+</p>

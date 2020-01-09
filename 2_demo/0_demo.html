@@ -1,0 +1,480 @@
+<h1 id="样式演示">
+ 样式演示
+</h1>
+<h2 id="markdown的练习示例">
+ Markdown的练习示例
+</h2>
+<h3 id="目录">
+ 目录
+</h3>
+<ol style="list-style-type: decimal">
+ <li>
+  标题设置
+  <br/>
+ </li>
+ <li>
+  块注释
+  <br/>
+ </li>
+ <li>
+  斜体
+  <br/>
+ </li>
+ <li>
+  粗体
+  <br/>
+ </li>
+ <li>
+  无序列表
+  <br/>
+ </li>
+ <li>
+  有序列表
+  <br/>
+ </li>
+ <li>
+  链接（Links）
+  <br/>
+ </li>
+ <li>
+  图片（Images）
+  <br/>
+ </li>
+ <li>
+  代码（HTML中所谓的Code）
+  <br/>
+ </li>
+ <li>
+  脚注（footnote）
+  <br/>
+ </li>
+ <li>
+  下划线
+  <br/>
+ </li>
+ <li>
+  段落换行问题
+  <br/>
+ </li>
+ <li>
+  表单
+ </li>
+</ol>
+<h3 id="标题设置">
+ 1. 标题设置
+</h3>
+<p>
+ 在Markdown当中设置标题，有两种方式： 第一种：通过在文字下方添加&ldquo;=&rdquo;和&ldquo;-&rdquo;，他们分别表示一级标题和二级标题。 第二种：在文字开头加上 &ldquo;#&rdquo;，通过&ldquo;#&rdquo;数量表示几级标题。（一共只有1~6级标题，1级标题字体最大）
+</p>
+<h1 id="一级标题">
+ 一级标题
+</h1>
+<h2 id="二级标题">
+ 二级标题
+</h2>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">一级标题
+===
+二级标题
+-----  </code></pre>
+</div>
+<h1 id="一级标题-1">
+ 一级标题
+</h1>
+<h2 id="二级标题-1">
+ 二级标题
+</h2>
+<h3 id="三级标题">
+ 三级标题
+</h3>
+<h4 id="四级标题">
+ 四级标题
+</h4>
+<h5 id="五级标题">
+ 五级标题
+</h5>
+<h6 id="六级标题">
+ 六级标题
+</h6>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown"><span class="fu"># 一级标题</span>
+<span class="fu">## 二级标题</span>
+<span class="fu">### 三级标题</span>
+<span class="fu">#### 四级标题</span>
+<span class="fu">##### 五级标题</span>
+<span class="fu">###### 六级标题</span></code></pre>
+</div>
+<h3 id="块注释">
+ 2. 块注释
+</h3>
+<p>
+ 通过在文字开头添加&ldquo;&gt;&rdquo;表示块注释。（当&gt;和文字之间添加五个blank时，块注释的文字会有变化。）
+</p>
+<blockquote>
+ <p>
+  块引用
+ </p>
+</blockquote>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">&lt;blockquote&gt;
+&lt;p&gt;块引用&lt;/p&gt;
+&lt;/blockquote&gt; </code></pre>
+</div>
+<blockquote>
+ <p>
+  内容1 内容2 内容3
+ </p>
+</blockquote>
+<blockquote>
+ <p>
+  内容一
+ </p>
+ <blockquote>
+  <p>
+   内容1
+  </p>
+  <blockquote>
+   <p>
+    内容2
+   </p>
+   <blockquote>
+    <p>
+     内容3
+    </p>
+   </blockquote>
+  </blockquote>
+ </blockquote>
+</blockquote>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">&gt;<span class="dt"> 内容1</span>
+<span class="dt">&gt; 内容2</span>
+<span class="dt">&gt; 内容3</span>
+
+<span class="dt">&gt; 内容一</span>
+<span class="dt">&gt;</span>
+<span class="dt">&gt; &gt; 内容1</span>
+<span class="dt">&gt; &gt; </span>
+<span class="dt">&gt; &gt; &gt; 内容2</span>
+<span class="dt">&gt; &gt; &gt;</span>
+<span class="dt">&gt; &gt; &gt; &gt; 内容3</span></code></pre>
+</div>
+<h3 id="斜体">
+ 3. 斜体
+</h3>
+<p>
+ 将需要设置为斜体的文字两端使用1个&ldquo;*&rdquo;或者&ldquo;_&rdquo;夹起来
+</p>
+<p>
+ <em>
+  斜体1
+ </em>
+ <em>
+  斜体2
+ </em>
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">*斜体1* 
+_斜体2_</code></pre>
+</div>
+<h3 id="粗体">
+ 4. 粗体
+</h3>
+<p>
+ 将需要设置为斜体的文字两端使用2个&ldquo;*&rdquo;或者&ldquo;_&rdquo;夹起来
+</p>
+<p>
+ <strong>
+  粗体1
+ </strong>
+ <strong>
+  粗体2
+ </strong>
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">**粗体1** 
+__粗体2__</code></pre>
+</div>
+<h3 id="无序列表">
+ 5. 无序列表
+</h3>
+<p>
+ 在文字开头添加(
+ <em>
+  , +, -)实现无序列表。但是要注意在(
+ </em>
+ , +, -)和文字之间需要添加空格。（建议：一个文档中只是用一种无序列表的表示方式）
+</p>
+<ul>
+ <li>
+  内容1
+ </li>
+ <li>
+  内容2
+  <ul>
+   <li>
+    aaa
+    <ul>
+     <li>
+      bbb
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li>
+  内容3
+ </li>
+</ul>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">* <span class="fl">内容1</span>
+<span class="fl">* 内容2</span>
+<span class="fl">    * aaa</span>
+<span class="fl">        * bbb</span>
+<span class="fl">* 内容3</span></code></pre>
+</div>
+<ul>
+ <li>
+  内容1
+ </li>
+ <li>
+  内容2
+ </li>
+ <li>
+  内容3
+ </li>
+</ul>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">+ <span class="fl">内容1</span>
+<span class="fl">+ 内容2</span>
+<span class="fl">+ 内容3</span></code></pre>
+</div>
+<ul>
+ <li>
+  内容1
+ </li>
+ <li>
+  内容2
+ </li>
+ <li>
+  内容3
+ </li>
+</ul>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">- <span class="fl">内容1</span>
+<span class="fl">- 内容2</span>
+<span class="fl">- 内容3</span></code></pre>
+</div>
+<h3 id="有序列表">
+ 6. 有序列表
+</h3>
+<p>
+ 使用数字后面跟上英文句号。（还要有空格）
+</p>
+<ol style="list-style-type: decimal">
+ <li>
+  abc
+ </li>
+ <li>
+  def
+ </li>
+ <li>
+  ghi
+ </li>
+</ol>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">1. <span class="fl">abc</span>
+<span class="fl">2. def</span>
+<span class="fl">3. ghi</span></code></pre>
+</div>
+<h3 id="链接links">
+ 7. 链接（Links）
+</h3>
+<p>
+ Markdown中有两种方式，实现链接，分别为内联方式和引用方式。
+</p>
+<p>
+ 内联方式：This is an example link to
+ <a href="http://baidu.com/">
+  baidu
+ </a>
+ .
+ <br/>
+ 引用方式： I get 10 times more traffic from
+ <a href="http://google.com/" title="Google">
+  Google
+ </a>
+ than from
+ <a href="http://search.yahoo.com/" title="Yahoo Search">
+  Yahoo
+ </a>
+ or
+ <a href="http://search.msn.com/" title="MSN Search">
+  MSN
+ </a>
+ .
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">内联方式：This is an example link to <span class="ot">[baidu](http://baidu.com/)</span>.  
+引用方式：
+I get 10 times more traffic from <span class="ot">[Google][1] </span>than from <span class="ot">[Yahoo][2] </span>or <span class="ot">[MSN][3]</span>.  
+
+<span class="ot">[1]: http://google.com/        "Google"</span>
+<span class="ot">[2]: http://search.yahoo.com/  "Yahoo Search"</span>
+<span class="ot">[3]: http://search.msn.com/    "MSN Search"</span></code></pre>
+</div>
+<h3 id="图片images">
+ 8. 图片（Images）
+</h3>
+<p>
+ 图片的处理方式和链接的处理方式，非常的类似。
+ <br/>
+ 内联方式：
+ <img src="assets/cloud_storage-1578543507538.png"/>
+ 引用方式：
+ <img alt="本地图片" src="http://qsaltedfish.cn/images/20180327232719104249.jpg" title="Title"/>
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">内联方式： ![](assets/cloud_storage-1578543507538.png)
+引用方式：
+<span class="al">![本地图片][id]</span>
+
+<span class="ot">[id]: http://qsaltedfish.cn/images/20180327232719104249.jpg "Title"</span></code></pre>
+</div>
+<h3 id="代码html中所谓的code">
+ 9. 代码（HTML中所谓的Code）
+</h3>
+<p>
+ 实现方式有两种： 第一种：简单文字出现一个代码框。使用`
+ <code>
+  &lt;blockquote&gt;
+ </code>
+ `。（`不是单引号而是左上角的ESC下面~中的`）
+</p>
+<p>
+ 第二种：大片文字需要实现代码框。使用Tab和四个空格。
+</p>
+<h3 id="脚注footnote">
+ 10. 脚注（footnote）
+</h3>
+<p>
+ 实现方式如下： hello
+ <a class="footnoteRef" href="#fn1" id="fnref1">
+  <sup>
+   1
+  </sup>
+ </a>
+</p>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">hello<span class="ot">[^hello]</span>
+
+<span class="ot">[^hello]</span>: hi</code></pre>
+</div>
+<p>
+ 最下面会有个脚注，但目前不能点击脚注以及点击返回
+</p>
+<h3 id="下划线">
+ 11. 下划线
+</h3>
+<p>
+ 在空白行下方添加三条&ldquo;-&rdquo;横线。（前面讲过在文字下方添加&ldquo;-&rdquo;，实现的2级标题）
+</p>
+<h3 id="段落换行问题">
+ 12. 段落换行问题
+</h3>
+<p>
+ 如果真的想要插入
+ <code>
+  &lt;br /&gt;
+ </code>
+ 标签，在行尾加上两个以上的空白，然后按 enter。
+</p>
+<h3 id="表格">
+ 13. 表格
+</h3>
+<table>
+ <thead>
+  <tr class="header">
+   <th align="left">
+    标题
+   </th>
+   <th align="left">
+    主要内容
+   </th>
+  </tr>
+ </thead>
+ <tbody>
+  <tr class="odd">
+   <td align="left">
+    关于Markdown
+   </td>
+   <td align="left">
+    简介Markdown，Markdown的优缺点
+   </td>
+  </tr>
+  <tr class="even">
+   <td align="left">
+    Markdown基础
+   </td>
+   <td align="left">
+    Markdown的
+    <strong>
+     基本语法
+    </strong>
+    ，格式化文本、代码、列表、链接和图片、分割线、转义符等
+   </td>
+  </tr>
+  <tr class="odd">
+   <td align="left">
+    Markdown表格和公式
+   </td>
+   <td align="left">
+    Markdown的
+    <strong>
+     扩展语法
+    </strong>
+    ，表格、公式
+   </td>
+  </tr>
+ </tbody>
+</table>
+<div class="sourceCode">
+ <pre class="sourceCode markdown"><code class="sourceCode markdown">标题| 主要内容
+-------|----------
+关于Markdown | 简介Markdown，Markdown的优缺点
+Markdown基础 | Markdown的**基本语法**，格式化文本、代码、列表、链接和图片、分割线、转义符等
+Markdown表格和公式 | Markdown的**扩展语法**，表格、公式</code></pre>
+</div>
+<p>
+ <em>
+  注：特殊字符会自动转换，如(&amp;)在链接中连接参数，应该通过
+  <code>
+   &amp;amp
+  </code>
+  重新转化成
+  <code>
+   &amp;
+  </code>
+  ，进行连接。还有很多类似的，如(&lt;)=&gt;
+  <code>
+   &amp;lt
+  </code>
+  ;都有可以能产生自动转化。
+ </em>
+ <br/>
+ <em>
+  本内容总结，有不正确的地方。请提出谢谢！
+ </em>
+</p>
+<div class="footnotes">
+ <hr/>
+ <ol>
+  <li id="fn1">
+   <p>
+    hi
+    <a href="#fnref1">
+     ↩
+    </a>
+   </p>
+  </li>
+ </ol>
+</div>
