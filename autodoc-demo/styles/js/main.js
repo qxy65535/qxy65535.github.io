@@ -1,4 +1,5 @@
-function get_href_loc(href) {
+function get_href_loc(href)
+{
     var filename = "default"
     var loc = ""
     var l = href.split("://")
@@ -12,38 +13,28 @@ function get_href_loc(href) {
         return [filename, loc]
     }
     
-    // l = l.split("#")
-    // l = l[l.length-1].split("/")
-
     if (l.length > 2) {
         loc = l[l.length-1]
         filename = l[l.length-2]
-        // l.pop()
     } else if (l.length == 2) {
         filename = l[l.length-1]
     }
     if (filename && filename[0] == '/') {
         filename = filename.substr(1)
     }
-    // l = l.filter((item) => item != "").join("/")
-    // if (l != "") {
-    //     filename = l
-    // }
-    // console.log(l)
     return [decodeURI(filename), decodeURI(loc).toLowerCase()]
 }
 
-function get_click_loc(href) {
+function get_click_loc(href)
+{
     var h = href.split("#")
     var filename = ""
     var loc = ""
     if (h.length > 2) {
         filename = h[h.length-2]
         loc = h[h.length-1]
-        // return [h[h.length-2], h[h.length-1]]
     } else if (h.length == 2) {
         filename = h[h.length-1]
-        // return [h[h.length-1], ""]
     }
     if (filename && filename[0] == '/') {
         filename = filename.substr(1)
@@ -51,7 +42,23 @@ function get_click_loc(href) {
     return [decodeURI(filename), decodeURI(loc).toLowerCase()]
 }
 
-function highlight_index(cur_select, cur) {
+function scroll_right(loc)
+{
+    var top = $("[id='"+loc+"']").offset().top-parseInt($(".inner-wrapper").css("paddingTop"))
+    top -= parseInt($("[id='"+loc+"']").css("marginTop"))
+    $("html,body").animate({scrollTop: top}, 200)
+}
+
+function resize_left()
+{
+    var margin_top = parseInt($("body").css("marginTop")) + $("header").height()
+    var left_height = $(window).height() - margin_top
+    $(".wrapper-left").height(left_height)
+    $("#left").height(left_height - parseInt($("#left").css("paddingTop")) - parseInt($("#left").css("paddingBottom")))
+}
+
+function highlight_index(cur_select, cur)
+{
     var find = false
     $("#left").find("a").each(function(i,item){
         if (find) return
@@ -85,21 +92,16 @@ $(document).ready(function(){
     var pre_loc = ""
     var loc = get_href_loc(window.location.href)
     var cur_select = null
-    // console.log(loc)
 
     $("#left").empty().load("navbar.html", function(response,status,xhr) {
         $("#left a").click(function(){
-            // console.log($(this).parent())
             if ($(this).parent() && $(this).parent().parent()) {
                 var p = $(this).parent().parent()
-                // console.log(p)
                 if (p[0].tagName == "DETAILS") {
                     if (p.attr("open")) {
-                        // p.removeAttr("open")
                     } else {
                         p.attr("open", "")
                     }
-                    // console.log(p.attr("open"))
                 }
             }
             if (cur_select) {
@@ -107,35 +109,17 @@ $(document).ready(function(){
             }
             cur_select = $(this)
             $(this).addClass("selected")
-            // var a_href = $(this).attr("href")
-            // var loc = get_click_loc($(this).attr("href"))
-            // var loc_cur = get_href_loc(window.location.href)
-            
-            // if (loc[0] == loc_cur[0]) {
-            //     // if (loc[1] != "")
-            //     //     location.href = "#"+loc[1]
-            //     pre_loc = location.href
-            //     location.href = "#/" + loc[0] + "/" + loc[1]
-            //     return false
-            // }
-
-            // pre_loc = location.href
-            // location.href = "#/" + loc[0] + "/" + loc[1]
-            
-            // return false;
         })
     })
 
-    $("#right").empty().load(/*default_file*/loc[0]+".html", function(response,status,xhr) {
+    $("#right").empty().load(loc[0]+".html", function(response,status,xhr) {
         if (status == "error") {
             alert("error page")
         }
         document.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightBlock(block)
         });
-        // if (loc[1] != "") {
-        //     location.href = "#"+loc[1]
-        // }
+
         pre_loc = location.href
         if (loc[0] != "default") {
             location.href = "#/" + loc[0] + "#" + loc[1]
@@ -153,16 +137,12 @@ $(document).ready(function(){
             $("#left").animate({scrollTop: top}, 200)
         }
         if (loc[1]) {
-            top = $("[id='"+loc[1]+"']").offset().top-parseInt($(".inner-wrapper").css("paddingTop"))
-            top -= parseInt($("[id='"+loc[1]+"']").css("marginTop"))
-            $("html,body").animate({scrollTop: top}, 200)
+            scroll_right(loc[1])
         }
     });
 
 
     $(window).on('hashchange', function(e) {
-        // console.log(pre_loc)
-        // console.log(location.href);
         var pre = get_href_loc(pre_loc)
         var cur = get_href_loc(location.href)
         pre_loc = location.href
@@ -172,15 +152,11 @@ $(document).ready(function(){
             if (cur[1] == "") {
                 $("html,body").animate({scrollTop: 0}, 200)
             } 
-            // console.log(decodeURI($("[id='"+decodeURI(cur[1])+"']'").offset()))
-            var top = $("[id='"+cur[1]+"']").offset().top-parseInt($(".inner-wrapper").css("paddingTop"))
-            top -= parseInt($("[id='"+cur[1]+"']").css("marginTop"))
-            $("html,body").animate({scrollTop: top}, 200)
+            scroll_right(cur[1])
             return
         }
 
-        $('#right').empty().load(/*file*/cur[0]+".html",function(response,status,xhr){
-                // hljs.initHighlighting()
+        $('#right').empty().load(cur[0]+".html",function(response,status,xhr){
             if (status == "error") {
                 alert("error page")
             }
@@ -191,20 +167,30 @@ $(document).ready(function(){
                 $("html,body").animate({scrollTop: 0}, 200)
             } 
             if (cur[1]) {
-                console.log(cur)
-                var top = $("[id='"+cur[1]+"']").offset().top-parseInt($(".inner-wrapper").css("paddingTop"))
-                top -= parseInt($("[id='"+cur[1]+"']").css("marginTop"))
-                $("html,body").animate({scrollTop: top}, 200)
+                scroll_right(cur[1])
             }
         });
     });
-    
-    var margin_top = parseInt($("body").css("marginTop")) + $("header").height()
-    var left_height = $(window).height() - margin_top - 5
-    $(".wrapper-left").height(left_height)
-    $("#left").height(left_height - parseInt($("#left").css("paddingTop")) - parseInt($("#left").css("paddingBottom")))
-    // if ($(".wrapper-right").height() < $(".wrapper-left").height()) {
-    //     $(".wrapper-right").height($(".wrapper-left").height())
-    // }
+
+    $("#icon-menu").on("click", function(e) {
+        if ($("#wrapper-left").hasClass("open")) {
+            $("#wrapper-left").removeClass("open")
+        } else {
+            $("#wrapper-left").addClass("open")
+        }
+        return false
+    })
+
+    $("#header, #wrapper-right").on("click", function(e) {
+        if ($("#wrapper-left").hasClass("open")) {
+            $("#wrapper-left").removeClass("open")
+        }
+    })
+
+    $(window).on("resize", function(){
+        resize_left()
+    })
+
+    resize_left()
 
 })

@@ -27,6 +27,22 @@ img {
     height: 100%;
 }
 
+.title {
+    margin: auto 20px; 
+    font-size: 150%; 
+    font-weight: bold; 
+    text-align: center;
+}
+
+.icon-menu {
+    width: 35px; 
+    height: 35px; 
+    margin: 5px 15px;
+    position: fixed;
+    display: none;
+    z-index: 100;
+}
+
 #left {
     /* width: 20%; */
     height: 100%;
@@ -112,12 +128,8 @@ img {
 }
 
 #right {
-    /* width: 7%; */
     min-height: 100%;
-    padding: 0px 40px 20px 40px;
-    /* margin-top: 20px; */
-    /* background: blue; */
-    /* float: left; */
+    padding: 0px 50px 20px 50px;
 }
 
 footer {
@@ -140,10 +152,13 @@ footer {
 
 .wrapper-left {
     width: 23%;
+    max-width: 400px;
+    min-width: 270px;
     height: 100%;
     float: left;
     border-right: 1px solid rgba(0,0,0,.07);
     position: fixed;
+    z-index: 88;
 }
 
 .wrapper-right {
@@ -151,6 +166,44 @@ footer {
     height: 100%;
     float: right;
     margin-bottom: 8px;
+}
+
+.wrapper-left.open {
+    left: 0px;
+}
+
+@media screen and (max-width: 1300px) {
+    #left {
+        padding: 20px 15px;
+    }
+    .wrapper-left {
+        min-width: 250px;
+    }
+}
+
+@media screen and (max-width: 950px) {
+    .wrapper-left {
+        left: -300px;
+        width: 85%;
+        max-width: 270px;
+        background-color: white;
+        box-shadow: darkgrey 3px 3px 10px 2px;
+        transition: left linear .2s;
+    }
+    .wrapper-right {
+        width: 100%;
+        float: left;
+    }
+    .icon-menu {
+        display: block;
+    }
+    .title {
+        margin: auto;
+    }
+
+    #right {
+        padding: 0px 10px 20px 10px;
+    }
 }
 
 .inner-wrapper {
@@ -163,8 +216,6 @@ footer {
 html {
     font-family: apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
     height:100%;
-    /* background-image: url(about:blank);
-    background-attachment:fixed; */
 }
 
 body {
@@ -173,6 +224,4 @@ body {
 	height:100%; 
 	margin-left: auto;
     margin-right: auto;
-    /* background-image: url(about:blank);
-    background-attachment:fixed; */
 }
