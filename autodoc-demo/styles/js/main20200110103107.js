@@ -172,6 +172,7 @@ $(document).ready(function(){
         });
     });
 
+    // $("#icon-menu").css("position", "fixed")
     $("#icon-menu").on("click", function(e) {
         if ($("#wrapper-left").hasClass("open")) {
             $("#wrapper-left").removeClass("open")
